@@ -1,11 +1,12 @@
 import { inject, injectable, } from 'inversify';
 import { ServiceIdentifiers } from '../../../container/ServiceIdentifiers';
 
-import { Expression } from 'estree';
+import type { Expression } from 'estree';
 
 import { TIdentifierNamesGeneratorFactory } from '../../../types/container/generators/TIdentifierNamesGeneratorFactory';
 import { TStatement } from '../../../types/node/TStatement';
 
+import { ICustomCodeHelperFormatter } from '../../../interfaces/custom-code-helpers/ICustomCodeHelperFormatter';
 import { IOptions } from '../../../interfaces/options/IOptions';
 import { IRandomGenerator } from '../../../interfaces/utils/IRandomGenerator';
 
@@ -32,27 +33,32 @@ export class ExpressionWithOperatorControlFlowStorageCallNode extends AbstractCu
     /**
      * @type {Expression}
      */
-    @initializable()
     private leftValue!: Expression;
 
     /**
      * @type {ESTree.Expression}
      */
-    @initializable()
     private rightValue!: Expression;
 
     /**
      * @param {TIdentifierNamesGeneratorFactory} identifierNamesGeneratorFactory
+     * @param {ICustomCodeHelperFormatter} customCodeHelperFormatter
      * @param {IRandomGenerator} randomGenerator
      * @param {IOptions} options
      */
-    constructor (
+    public constructor (
         @inject(ServiceIdentifiers.Factory__IIdentifierNamesGenerator)
             identifierNamesGeneratorFactory: TIdentifierNamesGeneratorFactory,
+        @inject(ServiceIdentifiers.ICustomCodeHelperFormatter) customCodeHelperFormatter: ICustomCodeHelperFormatter,
         @inject(ServiceIdentifiers.IRandomGenerator) randomGenerator: IRandomGenerator,
         @inject(ServiceIdentifiers.IOptions) options: IOptions
     ) {
-        super(identifierNamesGeneratorFactory, randomGenerator, options);
+        super(
+            identifierNamesGeneratorFactory,
+            customCodeHelperFormatter,
+            randomGenerator,
+            options
+        );
     }
 
     /**
@@ -73,6 +79,9 @@ export class ExpressionWithOperatorControlFlowStorageCallNode extends AbstractCu
         this.rightValue = rightValue;
     }
 
+    /**
+     * @returns {TStatement[]}
+     */
     protected getNodeStructure (): TStatement[] {
         const structure: TStatement = NodeFactory.expressionStatementNode(
             NodeFactory.callExpressionNode(

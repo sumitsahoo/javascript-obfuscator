@@ -3,18 +3,12 @@ import { ContainerModule, interfaces } from 'inversify';
 import { ServiceIdentifiers } from '../../ServiceIdentifiers';
 
 import { ICustomNode } from '../../../interfaces/custom-nodes/ICustomNode';
-import { ICustomNodeGroup } from '../../../interfaces/custom-nodes/ICustomNodeGroup';
+import { IStringArrayIndexNode } from '../../../interfaces/custom-nodes/string-array-nodes/IStringArrayIndexNode';
 
-import { ControlFlowCustomNode } from "../../../enums/custom-nodes/ControlFlowCustomNode";
-import { CustomNode } from '../../../enums/custom-nodes/CustomNode';
-import { CustomNodeGroup } from '../../../enums/custom-nodes/CustomNodeGroup';
+import { ControlFlowCustomNode } from '../../../enums/custom-nodes/ControlFlowCustomNode';
 import { DeadCodeInjectionCustomNode } from '../../../enums/custom-nodes/DeadCodeInjectionCustomNode';
-
-import { ConsoleOutputCustomNodeGroup } from '../../../custom-nodes/console-output-nodes/group/ConsoleOutputCustomNodeGroup';
-import { DebugProtectionCustomNodeGroup } from '../../../custom-nodes/debug-protection-nodes/group/DebugProtectionCustomNodeGroup';
-import { DomainLockCustomNodeGroup } from '../../../custom-nodes/domain-lock-nodes/group/DomainLockCustomNodeGroup';
-import { SelfDefendingCustomNodeGroup } from '../../../custom-nodes/self-defending-nodes/group/SelfDefendingCustomNodeGroup';
-import { StringArrayCustomNodeGroup } from '../../../custom-nodes/string-array-nodes/group/StringArrayCustomNodeGroup';
+import { ObjectExpressionKeysTransformerCustomNode } from '../../../enums/custom-nodes/ObjectExpressionKeysTransformerCustomNode';
+import { StringArrayCustomNode } from '../../../enums/custom-nodes/StringArrayCustomNode';
 
 import { BinaryExpressionFunctionNode } from '../../../custom-nodes/control-flow-flattening-nodes/BinaryExpressionFunctionNode';
 import { BlockStatementControlFlowFlatteningNode } from '../../../custom-nodes/control-flow-flattening-nodes/BlockStatementControlFlowFlatteningNode';
@@ -22,63 +16,19 @@ import { BlockStatementDeadCodeInjectionNode } from '../../../custom-nodes/dead-
 import { CallExpressionControlFlowStorageCallNode } from '../../../custom-nodes/control-flow-flattening-nodes/control-flow-storage-nodes/CallExpressionControlFlowStorageCallNode';
 import { CallExpressionFunctionNode } from '../../../custom-nodes/control-flow-flattening-nodes/CallExpressionFunctionNode';
 import { ControlFlowStorageNode } from '../../../custom-nodes/control-flow-flattening-nodes/control-flow-storage-nodes/ControlFlowStorageNode';
-import { ConsoleOutputDisableExpressionNode } from '../../../custom-nodes/console-output-nodes/ConsoleOutputDisableExpressionNode';
-import { DebugProtectionFunctionCallNode } from '../../../custom-nodes/debug-protection-nodes/DebugProtectionFunctionCallNode';
-import { DebugProtectionFunctionIntervalNode } from '../../../custom-nodes/debug-protection-nodes/DebugProtectionFunctionIntervalNode';
-import { DebugProtectionFunctionNode } from '../../../custom-nodes/debug-protection-nodes/DebugProtectionFunctionNode';
-import { DomainLockNode } from '../../../custom-nodes/domain-lock-nodes/DomainLockNode';
 import { ExpressionWithOperatorControlFlowStorageCallNode } from '../../../custom-nodes/control-flow-flattening-nodes/control-flow-storage-nodes/ExpressionWithOperatorControlFlowStorageCallNode';
 import { LogicalExpressionFunctionNode } from '../../../custom-nodes/control-flow-flattening-nodes/LogicalExpressionFunctionNode';
-import { NodeCallsControllerFunctionNode } from '../../../custom-nodes/node-calls-controller-nodes/NodeCallsControllerFunctionNode';
-import { SelfDefendingUnicodeNode } from '../../../custom-nodes/self-defending-nodes/SelfDefendingUnicodeNode';
-import { StringArrayCallsWrapper } from '../../../custom-nodes/string-array-nodes/StringArrayCallsWrapper';
-import { StringArrayNode } from '../../../custom-nodes/string-array-nodes/StringArrayNode';
-import { StringArrayRotateFunctionNode } from '../../../custom-nodes/string-array-nodes/StringArrayRotateFunctionNode';
+import { ObjectExpressionVariableDeclarationHostNode } from '../../../custom-nodes/object-expression-keys-transformer-nodes/ObjectExpressionVariableDeclarationHostNode';
+import { StringArrayCallNode } from '../../../custom-nodes/string-array-nodes/StringArrayCallNode';
+import { StringArrayHexadecimalNumberIndexNode } from '../../../custom-nodes/string-array-nodes/string-array-index-nodes/StringArrayHexadecimalNumberIndexNode';
+import { StringArrayHexadecimalNumericStringIndexNode } from '../../../custom-nodes/string-array-nodes/string-array-index-nodes/StringArrayHexadecimalNumericStringIndexNode';
+import { StringArrayIndexNode } from '../../../enums/custom-nodes/string-array-index-nodes/StringArrayIndexNode';
+import { StringArrayScopeCallsWrapperFunctionNode } from '../../../custom-nodes/string-array-nodes/StringArrayScopeCallsWrapperFunctionNode';
+import { StringArrayScopeCallsWrapperVariableNode } from '../../../custom-nodes/string-array-nodes/StringArrayScopeCallsWrapperVariableNode';
 import { StringLiteralControlFlowStorageCallNode } from '../../../custom-nodes/control-flow-flattening-nodes/control-flow-storage-nodes/StringLiteralControlFlowStorageCallNode';
-import { StringLiteralNode } from '../../../custom-nodes/control-flow-flattening-nodes/StringLiteralNode';
+import { LiteralNode } from '../../../custom-nodes/control-flow-flattening-nodes/LiteralNode';
 
 export const customNodesModule: interfaces.ContainerModule = new ContainerModule((bind: interfaces.Bind) => {
-    // custom nodes
-    bind<ICustomNode>(ServiceIdentifiers.ICustomNode)
-        .to(ConsoleOutputDisableExpressionNode)
-        .whenTargetNamed(CustomNode.ConsoleOutputDisableExpressionNode);
-
-    bind<ICustomNode>(ServiceIdentifiers.ICustomNode)
-        .to(DebugProtectionFunctionCallNode)
-        .whenTargetNamed(CustomNode.DebugProtectionFunctionCallNode);
-
-    bind<ICustomNode>(ServiceIdentifiers.ICustomNode)
-        .to(DebugProtectionFunctionIntervalNode)
-        .whenTargetNamed(CustomNode.DebugProtectionFunctionIntervalNode);
-
-    bind<ICustomNode>(ServiceIdentifiers.ICustomNode)
-        .to(DebugProtectionFunctionNode)
-        .whenTargetNamed(CustomNode.DebugProtectionFunctionNode);
-
-    bind<ICustomNode>(ServiceIdentifiers.ICustomNode)
-        .to(DomainLockNode)
-        .whenTargetNamed(CustomNode.DomainLockNode);
-
-    bind<ICustomNode>(ServiceIdentifiers.ICustomNode)
-        .to(NodeCallsControllerFunctionNode)
-        .whenTargetNamed(CustomNode.NodeCallsControllerFunctionNode);
-
-    bind<ICustomNode>(ServiceIdentifiers.ICustomNode)
-        .to(SelfDefendingUnicodeNode)
-        .whenTargetNamed(CustomNode.SelfDefendingUnicodeNode);
-
-    bind<ICustomNode>(ServiceIdentifiers.ICustomNode)
-        .to(StringArrayCallsWrapper)
-        .whenTargetNamed(CustomNode.StringArrayCallsWrapper);
-
-    bind<ICustomNode>(ServiceIdentifiers.ICustomNode)
-        .to(StringArrayNode)
-        .whenTargetNamed(CustomNode.StringArrayNode);
-
-    bind<ICustomNode>(ServiceIdentifiers.ICustomNode)
-        .to(StringArrayRotateFunctionNode)
-        .whenTargetNamed(CustomNode.StringArrayRotateFunctionNode);
-
     // control flow custom nodes
     bind<interfaces.Newable<ICustomNode>>(ServiceIdentifiers.Newable__ICustomNode)
         .toConstructor(BinaryExpressionFunctionNode)
@@ -105,12 +55,12 @@ export const customNodesModule: interfaces.ContainerModule = new ContainerModule
         .whenTargetNamed(ControlFlowCustomNode.ExpressionWithOperatorControlFlowStorageCallNode);
 
     bind<interfaces.Newable<ICustomNode>>(ServiceIdentifiers.Newable__ICustomNode)
-        .toConstructor(LogicalExpressionFunctionNode)
-        .whenTargetNamed(ControlFlowCustomNode.LogicalExpressionFunctionNode);
+        .toConstructor(LiteralNode)
+        .whenTargetNamed(ControlFlowCustomNode.LiteralNode);
 
     bind<interfaces.Newable<ICustomNode>>(ServiceIdentifiers.Newable__ICustomNode)
-        .toConstructor(StringLiteralNode)
-        .whenTargetNamed(ControlFlowCustomNode.StringLiteralNode);
+        .toConstructor(LogicalExpressionFunctionNode)
+        .whenTargetNamed(ControlFlowCustomNode.LogicalExpressionFunctionNode);
 
     bind<interfaces.Newable<ICustomNode>>(ServiceIdentifiers.Newable__ICustomNode)
         .toConstructor(StringLiteralControlFlowStorageCallNode)
@@ -121,54 +71,84 @@ export const customNodesModule: interfaces.ContainerModule = new ContainerModule
         .toConstructor(BlockStatementDeadCodeInjectionNode)
         .whenTargetNamed(DeadCodeInjectionCustomNode.BlockStatementDeadCodeInjectionNode);
 
-    // node groups
-    bind<ICustomNodeGroup>(ServiceIdentifiers.ICustomNodeGroup)
-        .to(ConsoleOutputCustomNodeGroup)
-        .whenTargetNamed(CustomNodeGroup.ConsoleOutputCustomNodeGroup);
+    // object expression keys transformer nodes
+    bind<interfaces.Newable<ICustomNode>>(ServiceIdentifiers.Newable__ICustomNode)
+        .toConstructor(ObjectExpressionVariableDeclarationHostNode)
+        .whenTargetNamed(ObjectExpressionKeysTransformerCustomNode.ObjectExpressionVariableDeclarationHostNode);
 
-    bind<ICustomNodeGroup>(ServiceIdentifiers.ICustomNodeGroup)
-        .to(DebugProtectionCustomNodeGroup)
-        .whenTargetNamed(CustomNodeGroup.DebugProtectionCustomNodeGroup);
+    // string array nodes
+    bind<interfaces.Newable<ICustomNode>>(ServiceIdentifiers.Newable__ICustomNode)
+        .toConstructor(StringArrayCallNode)
+        .whenTargetNamed(StringArrayCustomNode.StringArrayCallNode);
 
-    bind<ICustomNodeGroup>(ServiceIdentifiers.ICustomNodeGroup)
-        .to(DomainLockCustomNodeGroup)
-        .whenTargetNamed(CustomNodeGroup.DomainLockCustomNodeGroup);
+    bind<interfaces.Newable<ICustomNode>>(ServiceIdentifiers.Newable__ICustomNode)
+        .toConstructor(StringArrayScopeCallsWrapperFunctionNode)
+        .whenTargetNamed(StringArrayCustomNode.StringArrayScopeCallsWrapperFunctionNode);
 
-    bind<ICustomNodeGroup>(ServiceIdentifiers.ICustomNodeGroup)
-        .to(SelfDefendingCustomNodeGroup)
-        .whenTargetNamed(CustomNodeGroup.SelfDefendingCustomNodeGroup);
+    bind<interfaces.Newable<ICustomNode>>(ServiceIdentifiers.Newable__ICustomNode)
+        .toConstructor(StringArrayScopeCallsWrapperVariableNode)
+        .whenTargetNamed(StringArrayCustomNode.StringArrayScopeCallsWrapperVariableNode);
 
-    bind<ICustomNodeGroup>(ServiceIdentifiers.ICustomNodeGroup)
-        .to(StringArrayCustomNodeGroup)
-        .whenTargetNamed(CustomNodeGroup.StringArrayCustomNodeGroup);
+    // string array index nodes
+    bind<IStringArrayIndexNode>(ServiceIdentifiers.IStringArrayIndexNode)
+        .to(StringArrayHexadecimalNumberIndexNode)
+        .inSingletonScope()
+        .whenTargetNamed(StringArrayIndexNode.StringArrayHexadecimalNumberIndexNode);
 
-    // customNode factory
-    bind<ICustomNode>(ServiceIdentifiers.Factory__ICustomNode)
-        .toFactory<ICustomNode>(InversifyContainerFacade
-            .getFactory<CustomNode, ICustomNode>(ServiceIdentifiers.ICustomNode));
+    bind<IStringArrayIndexNode>(ServiceIdentifiers.IStringArrayIndexNode)
+        .to(StringArrayHexadecimalNumericStringIndexNode)
+        .inSingletonScope()
+        .whenTargetNamed(StringArrayIndexNode.StringArrayHexadecimalNumericStringIndexNode);
 
     // control flow customNode constructor factory
     bind<ICustomNode>(ServiceIdentifiers.Factory__IControlFlowCustomNode)
-        .toFactory<ICustomNode>(InversifyContainerFacade
+        .toFactory<ICustomNode, [ControlFlowCustomNode]>(InversifyContainerFacade
             .getConstructorFactory<ControlFlowCustomNode, ICustomNode>(
                 ServiceIdentifiers.Newable__ICustomNode,
                 ServiceIdentifiers.Factory__IIdentifierNamesGenerator,
+                ServiceIdentifiers.ICustomCodeHelperFormatter,
                 ServiceIdentifiers.IRandomGenerator,
                 ServiceIdentifiers.IOptions
             ));
 
     // dead code injection customNode constructor factory
     bind<ICustomNode>(ServiceIdentifiers.Factory__IDeadCodeInjectionCustomNode)
-        .toFactory<ICustomNode>(InversifyContainerFacade
+        .toFactory<ICustomNode, [DeadCodeInjectionCustomNode]>(InversifyContainerFacade
             .getConstructorFactory<DeadCodeInjectionCustomNode, ICustomNode>(
                 ServiceIdentifiers.Newable__ICustomNode,
                 ServiceIdentifiers.Factory__IIdentifierNamesGenerator,
+                ServiceIdentifiers.ICustomCodeHelperFormatter,
                 ServiceIdentifiers.IRandomGenerator,
                 ServiceIdentifiers.IOptions
             ));
 
-    // customNodeGroup factory
-    bind<ICustomNodeGroup>(ServiceIdentifiers.Factory__ICustomNodeGroup)
-        .toFactory<ICustomNodeGroup>(InversifyContainerFacade
-            .getFactory<CustomNodeGroup, ICustomNodeGroup>(ServiceIdentifiers.ICustomNodeGroup));
+    // object expression keys transformer customNode constructor factory
+    bind<ICustomNode>(ServiceIdentifiers.Factory__IObjectExpressionKeysTransformerCustomNode)
+        .toFactory<ICustomNode, [ObjectExpressionKeysTransformerCustomNode]>(InversifyContainerFacade
+            .getConstructorFactory<ObjectExpressionKeysTransformerCustomNode, ICustomNode>(
+                ServiceIdentifiers.Newable__ICustomNode,
+                ServiceIdentifiers.Factory__IIdentifierNamesGenerator,
+                ServiceIdentifiers.ICustomCodeHelperFormatter,
+                ServiceIdentifiers.IRandomGenerator,
+                ServiceIdentifiers.IOptions
+            ));
+
+    // string array customNode constructor factory
+    bind<ICustomNode>(ServiceIdentifiers.Factory__IStringArrayCustomNode)
+        .toFactory<ICustomNode, [StringArrayCustomNode]>(InversifyContainerFacade
+            .getConstructorFactory<StringArrayCustomNode, ICustomNode>(
+                ServiceIdentifiers.Newable__ICustomNode,
+                ServiceIdentifiers.Factory__IIdentifierNamesGenerator,
+                ServiceIdentifiers.Factory__IStringArrayIndexNode,
+                ServiceIdentifiers.ICustomCodeHelperFormatter,
+                ServiceIdentifiers.IStringArrayStorage,
+                ServiceIdentifiers.IArrayUtils,
+                ServiceIdentifiers.IRandomGenerator,
+                ServiceIdentifiers.IOptions
+            ));
+
+    // string array index node factory
+    bind<IStringArrayIndexNode>(ServiceIdentifiers.Factory__IStringArrayIndexNode)
+        .toFactory<IStringArrayIndexNode, [StringArrayIndexNode]>(InversifyContainerFacade
+            .getCacheFactory<StringArrayIndexNode, IStringArrayIndexNode>(ServiceIdentifiers.IStringArrayIndexNode));
 });

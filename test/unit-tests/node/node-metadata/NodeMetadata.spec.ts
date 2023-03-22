@@ -9,18 +9,18 @@ import { NodeFactory } from '../../../../src/node/NodeFactory';
 
 describe('NodeMetadata', () => {
     describe('set', () => {
-        const expectedMetadata: ESTree.IdentifierNodeMetadata = {
+        const expectedMetadata: ESTree.LiteralNodeMetadata = {
             ignoredNode: true,
-            renamedIdentifier: true
+            stringArrayCallLiteralNode: true
         };
 
-        let node: ESTree.Identifier;
+        let node: ESTree.Literal;
 
         before(() => {
-            node = NodeFactory.identifierNode('foo');
+            node = NodeFactory.literalNode('foo');
             NodeMetadata.set(node, {
                 ignoredNode: true,
-                renamedIdentifier: true
+                stringArrayCallLiteralNode: true
             })
         });
 
@@ -32,17 +32,56 @@ describe('NodeMetadata', () => {
     describe('get', () => {
         const expectedValue: boolean = true;
 
+        let node: ESTree.Literal,
+            value: boolean | undefined;
+
+        before(() => {
+            node = NodeFactory.literalNode('foo');
+            node.metadata = {};
+            node.metadata.stringArrayCallLiteralNode = true;
+            value = NodeMetadata.get<
+                ESTree.LiteralNodeMetadata,
+                'stringArrayCallLiteralNode'
+            >(node, 'stringArrayCallLiteralNode');
+        });
+
+        it('should get metadata value of the node', () => {
+            assert.equal(value, expectedValue);
+        });
+    });
+
+    describe('isEvalHostNode', () => {
+        const expectedValue: boolean = true;
+
+        let node: ESTree.FunctionExpression,
+            value: boolean | undefined;
+
+        before(() => {
+            node = NodeFactory.functionExpressionNode([], NodeFactory.blockStatementNode([]));
+            node.metadata = {};
+            node.metadata.evalHostNode = true;
+            value = NodeMetadata.isEvalHostNode(node);
+        });
+
+        it('should return metadata value', () => {
+            assert.equal(value, expectedValue);
+        });
+    });
+
+    describe('isForceTransformNode', () => {
+        const expectedValue: boolean = true;
+
         let node: ESTree.Identifier,
             value: boolean | undefined;
 
         before(() => {
             node = NodeFactory.identifierNode('foo');
             node.metadata = {};
-            node.metadata.renamedIdentifier = true;
-            value = NodeMetadata.get<ESTree.IdentifierNodeMetadata>(node, 'renamedIdentifier');
+            node.metadata.forceTransformNode = true;
+            value = NodeMetadata.isForceTransformNode(node);
         });
 
-        it('should get metadata value of the node', () => {
+        it('should return metadata value', () => {
             assert.equal(value, expectedValue);
         });
     });
@@ -65,7 +104,7 @@ describe('NodeMetadata', () => {
         });
     });
 
-    describe('isRenamedIdentifier', () => {
+    describe('propertyKeyToRenameNode', () => {
         const expectedValue: boolean = true;
 
         let node: ESTree.Identifier,
@@ -74,8 +113,8 @@ describe('NodeMetadata', () => {
         before(() => {
             node = NodeFactory.identifierNode('foo');
             node.metadata = {};
-            node.metadata.renamedIdentifier = true;
-            value = NodeMetadata.isRenamedIdentifier(node);
+            node.metadata.propertyKeyToRenameNode = true;
+            value = NodeMetadata.isPropertyKeyToRenameNode(node);
         });
 
         it('should return metadata value', () => {
@@ -83,7 +122,7 @@ describe('NodeMetadata', () => {
         });
     });
 
-    describe('isReplacedLiteral', () => {
+    describe('isStringArrayCallLiteralNode', () => {
         const expectedValue: boolean = true;
 
         let node: ESTree.Literal,
@@ -92,8 +131,8 @@ describe('NodeMetadata', () => {
         before(() => {
             node = NodeFactory.literalNode('foo');
             node.metadata = {};
-            node.metadata.replacedLiteral = true;
-            value = NodeMetadata.isReplacedLiteral(node);
+            node.metadata.stringArrayCallLiteralNode = true;
+            value = NodeMetadata.isStringArrayCallLiteralNode(node);
         });
 
         it('should return metadata value', () => {

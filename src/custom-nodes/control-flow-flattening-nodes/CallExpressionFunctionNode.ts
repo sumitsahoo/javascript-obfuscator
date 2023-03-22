@@ -6,6 +6,7 @@ import * as ESTree from 'estree';
 import { TIdentifierNamesGeneratorFactory } from '../../types/container/generators/TIdentifierNamesGeneratorFactory';
 import { TStatement } from '../../types/node/TStatement';
 
+import { ICustomCodeHelperFormatter } from '../../interfaces/custom-code-helpers/ICustomCodeHelperFormatter';
 import { IOptions } from '../../interfaces/options/IOptions';
 import { IRandomGenerator } from '../../interfaces/utils/IRandomGenerator';
 
@@ -14,6 +15,7 @@ import { initializable } from '../../decorators/Initializable';
 import { AbstractCustomNode } from '../AbstractCustomNode';
 import { NodeFactory } from '../../node/NodeFactory';
 import { NodeUtils } from '../../node/NodeUtils';
+import { NodeGuards } from '../../node/NodeGuards';
 
 @injectable()
 export class CallExpressionFunctionNode extends AbstractCustomNode {
@@ -25,16 +27,23 @@ export class CallExpressionFunctionNode extends AbstractCustomNode {
 
     /**
      * @param {TIdentifierNamesGeneratorFactory} identifierNamesGeneratorFactory
+     * @param {ICustomCodeHelperFormatter} customCodeHelperFormatter
      * @param {IRandomGenerator} randomGenerator
      * @param {IOptions} options
      */
-    constructor (
+    public constructor (
         @inject(ServiceIdentifiers.Factory__IIdentifierNamesGenerator)
             identifierNamesGeneratorFactory: TIdentifierNamesGeneratorFactory,
+        @inject(ServiceIdentifiers.ICustomCodeHelperFormatter) customCodeHelperFormatter: ICustomCodeHelperFormatter,
         @inject(ServiceIdentifiers.IRandomGenerator) randomGenerator: IRandomGenerator,
         @inject(ServiceIdentifiers.IOptions) options: IOptions
     ) {
-        super(identifierNamesGeneratorFactory, randomGenerator, options);
+        super(
+            identifierNamesGeneratorFactory,
+            customCodeHelperFormatter,
+            randomGenerator,
+            options
+        );
     }
 
     /**
@@ -49,11 +58,28 @@ export class CallExpressionFunctionNode extends AbstractCustomNode {
      */
     protected getNodeStructure (): TStatement[] {
         const calleeIdentifier: ESTree.Identifier = NodeFactory.identifierNode('callee');
-        const params: ESTree.Identifier[] = [];
+        const params: (ESTree.Identifier | ESTree.RestElement)[] = [];
+        const callArguments: (ESTree.Identifier | ESTree.SpreadElement)[] = [];
         const argumentsLength: number = this.expressionArguments.length;
 
         for (let i: number = 0; i < argumentsLength; i++) {
-            params.push(NodeFactory.identifierNode(`param${i + 1}`));
+            const argument: ESTree.Expression | ESTree.SpreadElement = this.expressionArguments[i];
+            const isSpreadCallArgument: boolean = NodeGuards.isSpreadElementNode(argument);
+
+            const baseIdentifierNode: ESTree.Identifier = NodeFactory.identifierNode(`param${i + 1}`);
+
+            if (isSpreadCallArgument) {
+                params.push(NodeFactory.restElementNode(baseIdentifierNode));
+                callArguments.push(NodeFactory.spreadElementNode(baseIdentifierNode));
+
+                const isMiddleSpreadCallArgument: boolean = i < argumentsLength - 1;
+                if (isMiddleSpreadCallArgument) {
+                    break;
+                }
+            } else {
+                params.push(baseIdentifierNode);
+                callArguments.push(baseIdentifierNode);
+            }
         }
 
         const structure: TStatement = NodeFactory.expressionStatementNode(
@@ -66,7 +92,7 @@ export class CallExpressionFunctionNode extends AbstractCustomNode {
                     NodeFactory.returnStatementNode(
                         NodeFactory.callExpressionNode(
                             calleeIdentifier,
-                            params
+                            callArguments
                         )
                     )
                 ])

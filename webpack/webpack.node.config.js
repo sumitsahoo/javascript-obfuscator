@@ -1,14 +1,18 @@
 'use strict';
 
+const path = require('path');
+
 const nodeExternals = require('webpack-node-externals');
 const webpack = require('webpack');
-const CheckerPlugin = require('awesome-typescript-loader').CheckerPlugin;
-const TSLintPlugin = require('tslint-webpack-plugin');
+const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
+const ForkTsCheckerNotifierWebpackPlugin = require('fork-ts-checker-notifier-webpack-plugin');
+const ESLintPlugin = require('eslint-webpack-plugin');
 const packageJson = require('pjson');
 
 const WebpackUtils = require('./utils/WebpackUtils').WebpackUtils;
 
 module.exports = {
+    context: path.resolve(__dirname, '..'),
     devtool: 'source-map',
     entry: {
         'index': './index.ts',
@@ -20,20 +24,24 @@ module.exports = {
         exprContextCritical: false,
         rules: [
             {
-                test: /\.ts(x?)$/,
-                loader: 'awesome-typescript-loader',
-                query: {
-                    configFileName: 'src/tsconfig.node.json',
-                    useBabel: true,
-                    babelCore: '@babel/core',
-                    useCache: true,
-                    forceIsolatedModules: true
+                test: /\.ts$/,
+                loader: 'ts-loader',
+                options: {
+                    transpileOnly: true
                 }
             }
         ]
     },
     resolve: {
         extensions: ['.ts']
+    },
+    cache: {
+        type: 'filesystem',
+        buildDependencies: {
+            config: [
+                __filename
+            ]
+        }
     },
     plugins: [
         new webpack.BannerPlugin(
@@ -47,20 +55,25 @@ module.exports = {
             }
         ),
         new webpack.EnvironmentPlugin({
-            VERSION: packageJson.version
+            VERSION: packageJson.version,
+            BUILD_TIMESTAMP: Date.now()
         }),
-        new CheckerPlugin(),
-        new TSLintPlugin({
-            files: ['./src/**/*.ts'],
-            project: './src/tsconfig.node.json',
-            exclude: []
+        new ForkTsCheckerWebpackPlugin({
+            typescript: {
+                configFile: 'src/tsconfig.node.json'
+            }
+        }),
+        new ESLintPlugin({
+            files: 'src/**/*.ts'
+        }),
+        new ForkTsCheckerNotifierWebpackPlugin({
+            skipFirstNotification: true
         })
     ],
     output: {
-        libraryTarget:  'commonjs2',
-        library: 'JavaScriptObfuscator'
+        libraryTarget:  'commonjs2'
     },
     stats: {
-        maxModules: 0
+        excludeModules: true
     }
 };

@@ -1,7 +1,6 @@
-/* tslint:disable:no-invalid-this */
-
 import { IInitializable } from '../interfaces/IInitializable';
 
+const decoratorName: string = 'initializable';
 const defaultDescriptor: PropertyDescriptor = {
     configurable: true,
     enumerable: true
@@ -9,21 +8,19 @@ const defaultDescriptor: PropertyDescriptor = {
 const initializedTargetMetadataKey: string = '_initialized';
 const initializablePropertiesSetMetadataKey: string = '_initializablePropertiesSet';
 const wrappedMethodsSetMetadataKey: string = '_wrappedMethodsSet';
-const constructorMethodName: string = 'constructor';
+const constructorMethodName: 'constructor' = 'constructor';
+const initializeMethodName: 'initialize' = 'initialize';
 
 /**
  * @param {string} initializeMethodName
  * @returns {(target: IInitializable, propertyKey: (string | symbol)) => any}
  */
-export function initializable (
-    initializeMethodName: string = 'initialize'
-): (target: IInitializable, propertyKey: string | symbol) => any {
-    const decoratorName: string = Object.keys(this)[0];
-
+export function initializable (): (target: IInitializable, propertyKey: string | symbol) => any {
     return (target: IInitializable, propertyKey: string | symbol): PropertyDescriptor => {
         const initializeMethod: Function = target[initializeMethodName];
+        const isInvalidInitializeMethod = !initializeMethod || typeof initializeMethod !== 'function';
 
-        if (!initializeMethod || typeof initializeMethod !== 'function') {
+        if (isInvalidInitializeMethod) {
             throw new Error(`\`${initializeMethodName}\` method with initialization logic not ` +
                 `found. \`@${decoratorName}\` decorator requires \`${initializeMethodName}\` method`);
         }
@@ -38,8 +35,8 @@ export function initializable (
         /**
          * Stage #2: wrap target methods
          */
-        wrapTargetMethodsInInitializedCheck(target, initializeMethodName);
-        wrapInitializeMethodInInitializeCheck(target, initializeMethodName, propertyKey);
+        wrapTargetMethodsInInitializedCheck(target);
+        wrapInitializeMethodInInitializeCheck(target, propertyKey);
 
         /**
          * Stage #3: wrap target properties
@@ -65,11 +62,10 @@ function initializeTargetMetadata (metadataKey: string, metadataValue: any, targ
  * Wraps all target methods with additional logic that check that this methods will called after `initialize` method
  *
  * @param {IInitializable} target
- * @param {string} initializeMethodName
  */
-function wrapTargetMethodsInInitializedCheck (target: IInitializable, initializeMethodName: string): void {
+function wrapTargetMethodsInInitializedCheck (target: IInitializable): void {
     const ownPropertyNames: string[] = Object.getOwnPropertyNames(target);
-    const prohibitedPropertyNames: string[] = [initializeMethodName, constructorMethodName];
+    const prohibitedPropertyNames: Set<string> = new Set([initializeMethodName, constructorMethodName]);
 
     ownPropertyNames.forEach((propertyName: string) => {
         const initializablePropertiesSet: Set <string | symbol> = Reflect
@@ -77,7 +73,7 @@ function wrapTargetMethodsInInitializedCheck (target: IInitializable, initialize
         const wrappedMethodsSet: Set <string | symbol> = Reflect
             .getMetadata(wrappedMethodsSetMetadataKey, target);
 
-        const isProhibitedPropertyName: boolean = prohibitedPropertyNames.includes(propertyName)
+        const isProhibitedPropertyName: boolean = prohibitedPropertyNames.has(propertyName)
             || initializablePropertiesSet.has(propertyName)
             || wrappedMethodsSet.has(propertyName);
 
@@ -92,12 +88,12 @@ function wrapTargetMethodsInInitializedCheck (target: IInitializable, initialize
         }
 
         const methodDescriptor: PropertyDescriptor = Object
-            .getOwnPropertyDescriptor(target, propertyName) || defaultDescriptor;
+            .getOwnPropertyDescriptor(target, propertyName) ?? defaultDescriptor;
         const originalMethod: Function = methodDescriptor.value;
 
         Object.defineProperty(target, propertyName, {
             ...methodDescriptor,
-            value: function (): void {
+            value (): void {
                 if (!Reflect.getMetadata(initializedTargetMetadataKey, this)) {
                     throw new Error(`Class should be initialized with \`${initializeMethodName}()\` method`);
                 }
@@ -114,16 +110,14 @@ function wrapTargetMethodsInInitializedCheck (target: IInitializable, initialize
  * Wraps `initialize` method with additional logic to check that `initialized` properties will set
  *
  * @param {IInitializable} target
- * @param {string} initializeMethodName
  * @param {string | symbol} propertyKey
  */
 function wrapInitializeMethodInInitializeCheck (
     target: IInitializable,
-    initializeMethodName: string,
     propertyKey: string | symbol
 ): void {
     const methodDescriptor: PropertyDescriptor = Object
-        .getOwnPropertyDescriptor(target, initializeMethodName) || defaultDescriptor;
+        .getOwnPropertyDescriptor(target, initializeMethodName) ?? defaultDescriptor;
     const originalMethod: Function = methodDescriptor.value;
 
     Object.defineProperty(target, initializeMethodName, {
@@ -159,7 +153,7 @@ function wrapInitializableProperty (target: IInitializable, propertyKey: string 
 
     const initializablePropertyMetadataKey: string = `_${propertyKey.toString()}`;
     const propertyDescriptor: PropertyDescriptor = Object
-            .getOwnPropertyDescriptor(target, initializablePropertyMetadataKey) || defaultDescriptor;
+            .getOwnPropertyDescriptor(target, initializablePropertyMetadataKey) ?? defaultDescriptor;
 
     Object.defineProperty(target, propertyKey, {
         ...propertyDescriptor,

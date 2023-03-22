@@ -1,53 +1,32 @@
-import * as fs from 'fs';
-import * as mkdirp from 'mkdirp';
 import * as path from 'path';
 
-import { TObject } from '../../types/TObject';
+import { TDictionary } from '../../types/TDictionary';
 
-import { JavaScriptObfuscatorCLI } from '../JavaScriptObfuscatorCLI';
+import { StringSeparator } from '../../enums/StringSeparator';
 
 export class CLIUtils {
     /**
-     * @param {string} inputPath
-     * @returns {string}
+     * @type {string[]}
      */
-    public static getOutputCodePath (inputPath: string): string {
-        return path
-            .normalize(inputPath)
-            .split('.')
-            .map((value: string, index: number) => {
-                return index === 0 ? `${value}${JavaScriptObfuscatorCLI.obfuscatedFilePrefix}` : value;
-            })
-            .join('.');
-    }
-
-    /**
-     * @param {string} outputCodePath
-     * @param {string} sourceMapFileName
-     * @returns {string}
-     */
-    public static getOutputSourceMapPath (outputCodePath: string, sourceMapFileName: string = ''): string {
-        if (sourceMapFileName) {
-            outputCodePath = `${outputCodePath.substring(
-                0, outputCodePath.lastIndexOf('/')
-            )}/${sourceMapFileName}`;
-        }
-
-        if (!/\.js\.map$/.test(outputCodePath)) {
-            outputCodePath = `${outputCodePath.split('.')[0]}.js.map`;
-        } else if (/\.js$/.test(outputCodePath)) {
-            outputCodePath += '.map';
-        }
-
-        return outputCodePath;
-    }
+    public static readonly allowedConfigFileExtensions: string[] = [
+        '.js',
+        '.json',
+        '.cjs'
+    ];
 
     /**
      * @param {string} configPath
-     * @returns {TObject}
+     * @returns {TDictionary}
      */
-    public static getUserConfig (configPath: string): TObject {
-        let config: Object;
+    public static getUserConfig (configPath: string): TDictionary {
+        let config: TDictionary;
+
+        const configFileExtension: string = path.extname(configPath);
+        const isValidExtension: boolean = CLIUtils.allowedConfigFileExtensions.includes(configFileExtension);
+
+        if (!isValidExtension) {
+            throw new ReferenceError('Given config path must be a valid `.js|.mjs|.cjs` or `.json` file path');
+        }
 
         try {
             config = require(configPath);
@@ -55,7 +34,7 @@ export class CLIUtils {
             try {
                 config = __non_webpack_require__(configPath);
             } catch {
-                throw new ReferenceError('Given config path must be a valid `.js` or `.json` file path');
+                throw new ReferenceError(`Cannot open config file with path: ${configPath}`);
             }
         }
 
@@ -63,14 +42,10 @@ export class CLIUtils {
     }
 
     /**
-     * @param {string} outputPath
-     * @param {string} data
+     * @param {TDictionary} optionEnum
+     * @returns {string}
      */
-    public static writeFile (outputPath: string, data: string): void {
-        mkdirp.sync(path.dirname(outputPath));
-
-        fs.writeFileSync(outputPath, data, {
-            encoding: JavaScriptObfuscatorCLI.encoding
-        });
+    public static stringifyOptionAvailableValues (optionEnum: TDictionary): string {
+        return Object.values(optionEnum).join(`${StringSeparator.Comma} `);
     }
 }

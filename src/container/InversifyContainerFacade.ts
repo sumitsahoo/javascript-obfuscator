@@ -2,34 +2,43 @@ import { Container, interfaces } from 'inversify';
 import { ServiceIdentifiers } from './ServiceIdentifiers';
 
 import { analyzersModule } from './modules/analyzers/AnalyzersModule';
+import { codeTransformersModule } from './modules/code-transformers/CodeTransformersModule';
 import { controlFlowTransformersModule } from './modules/node-transformers/ControlFlowTransformersModule';
 import { convertingTransformersModule } from './modules/node-transformers/ConvertingTransformersModule';
+import { customCodeHelpersModule } from './modules/custom-code-helpers/CustomCodeHelpersModule';
 import { customNodesModule } from './modules/custom-nodes/CustomNodesModule';
+import { deadCodeInjectionTransformersModule } from './modules/node-transformers/DeadCodeInjectionTransformersModule';
 import { finalizingTransformersModule } from './modules/node-transformers/FinalizingTransformersModule';
 import { generatorsModule } from './modules/generators/GeneratorsModule';
+import { initializingTransformersModule } from './modules/node-transformers/InitializingTransformersModule';
+import { nodeModule } from './modules/node/NodeModule';
 import { nodeTransformersModule } from './modules/node-transformers/NodeTransformersModule';
-import { obfuscatingTransformersModule } from './modules/node-transformers/ObfuscatingTransformersModule';
 import { optionsModule } from './modules/options/OptionsModule';
 import { preparingTransformersModule } from './modules/node-transformers/PreparingTransformersModule';
+import { renameIdentifiersTransformersModule } from './modules/node-transformers/RenameIdentifiersTransformersModule';
+import { renamePropertiesTransformersModule } from './modules/node-transformers/RenamePropertiesTransformersModule';
+import { simplifyingTransformersModule } from './modules/node-transformers/SimplifyingTransformersModule';
 import { storagesModule } from './modules/storages/StoragesModule';
+import { stringArrayTransformersModule } from './modules/node-transformers/StringArrayTransformersModule';
 import { utilsModule } from './modules/utils/UtilsModule';
 
+import { TConstructor } from '../types/TConstructor';
 import { TInputOptions } from '../types/options/TInputOptions';
 
+import { ICodeTransformersRunner } from '../interfaces/code-transformers/ICodeTransformersRunner';
 import { IInversifyContainerFacade } from '../interfaces/container/IInversifyContainerFacade';
 import { IJavaScriptObfuscator } from '../interfaces/IJavaScriptObfsucator';
 import { ILogger } from '../interfaces/logger/ILogger';
-import { IObfuscationEventEmitter } from '../interfaces/event-emitters/IObfuscationEventEmitter';
-import { IObfuscatedCode } from '../interfaces/source-code/IObfuscatedCode';
+import { IObfuscationResult } from '../interfaces/source-code/IObfuscationResult';
 import { ISourceCode } from '../interfaces/source-code/ISourceCode';
-import { ITransformersRunner } from '../interfaces/node-transformers/ITransformersRunner';
+import { INodeTransformersRunner } from '../interfaces/node-transformers/INodeTransformersRunner';
 
+import { CodeTransformersRunner } from '../code-transformers/CodeTransformersRunner';
 import { JavaScriptObfuscator } from '../JavaScriptObfuscator';
 import { Logger } from '../logger/Logger';
-import { ObfuscationEventEmitter } from '../event-emitters/ObfuscationEventEmitter';
-import { ObfuscatedCode } from '../source-code/ObfuscatedCode';
+import { NodeTransformersRunner } from '../node-transformers/NodeTransformersRunner';
+import { ObfuscationResult } from '../source-code/ObfuscationResult';
 import { SourceCode } from '../source-code/SourceCode';
-import { TransformersRunner } from '../node-transformers/TransformersRunner';
 
 export class InversifyContainerFacade implements IInversifyContainerFacade {
     /**
@@ -37,7 +46,7 @@ export class InversifyContainerFacade implements IInversifyContainerFacade {
      */
     private readonly container: interfaces.Container;
 
-    constructor () {
+    public constructor () {
         this.container = new Container();
     }
 
@@ -49,7 +58,7 @@ export class InversifyContainerFacade implements IInversifyContainerFacade {
         serviceIdentifier: interfaces.ServiceIdentifier<U>
     ): (context: interfaces.Context) => (bindingName: T) => U {
         return (context: interfaces.Context): (bindingName: T) => U => {
-            return (bindingName: T) => {
+            return (bindingName: T): U => {
                 return context.container.getNamed<U>(serviceIdentifier, bindingName);
             };
         };
@@ -65,7 +74,7 @@ export class InversifyContainerFacade implements IInversifyContainerFacade {
         return (context: interfaces.Context): (bindingName: T) => U => {
             const cache: Map <T, U> = new Map();
 
-            return (bindingName: T) => {
+            return (bindingName: T): U => {
                 if (cache.has(bindingName)) {
                     return <U>cache.get(bindingName);
                 }
@@ -80,21 +89,21 @@ export class InversifyContainerFacade implements IInversifyContainerFacade {
     }
 
     /**
-     * @param {interfaces.ServiceIdentifier<interfaces.Newable<U>>} serviceIdentifier
-     * @param {interfaces.ServiceIdentifier<interfaces.Newable<Object>>[]} dependencies
-     * @returns {U}
+     * @param {interfaces.ServiceIdentifier<TConstructor<Record<string, any>[], U>>} serviceIdentifier
+     * @param {interfaces.ServiceIdentifier<TConstructor<Record<string, any>[], U>>} dependencies
+     * @returns {(context: interfaces.Context) => (bindingName: T) => U}
      */
     public static getConstructorFactory <T extends string, U> (
-        serviceIdentifier: interfaces.ServiceIdentifier<interfaces.Newable<U>>,
-        ...dependencies: interfaces.ServiceIdentifier<interfaces.Newable<Object>>[]
+        serviceIdentifier: interfaces.ServiceIdentifier<TConstructor<Record<string, any>[], U>>,
+        ...dependencies: interfaces.ServiceIdentifier<TConstructor<Record<string, any>[], U>>[]
     ): (context: interfaces.Context) => (bindingName: T) => U {
         return (context: interfaces.Context): (bindingName: T) => U => {
-            const cache: Map<T, interfaces.Newable<U>> = new Map();
-            const cachedDependencies: Object[] = [];
+            const cache: Map<T, TConstructor<Record<string, any>[], U>> = new Map();
+            const cachedDependencies: Record<string, any>[] = [];
 
-            return (bindingName: T) => {
+            return (bindingName: T): U => {
                 dependencies.forEach((
-                    dependency: interfaces.ServiceIdentifier<interfaces.Newable<Object>>,
+                    dependency: interfaces.ServiceIdentifier<TConstructor<Record<string, any>[], U>>,
                     index: number
                 ) => {
                     if (!cachedDependencies[index]) {
@@ -103,11 +112,11 @@ export class InversifyContainerFacade implements IInversifyContainerFacade {
                 });
 
                 if (cache.has(bindingName)) {
-                    return new (<interfaces.Newable<U>>cache.get(bindingName))(...cachedDependencies);
+                    return new (<TConstructor<Record<string, any>[], U>>cache.get(bindingName))(...cachedDependencies);
                 }
 
-                const constructor: interfaces.Newable<U> = context.container
-                    .getNamed<interfaces.Newable<U>>(
+                const constructor = context.container
+                    .getNamed<TConstructor<Record<string, any>[], U>>(
                         serviceIdentifier,
                         bindingName
                     );
@@ -163,44 +172,52 @@ export class InversifyContainerFacade implements IInversifyContainerFacade {
             .inSingletonScope();
 
         this.container
-            .bind<ITransformersRunner>(ServiceIdentifiers.ITransformersRunner)
-            .to(TransformersRunner)
+            .bind<ICodeTransformersRunner>(ServiceIdentifiers.ICodeTransformersRunner)
+            .to(CodeTransformersRunner)
             .inSingletonScope();
 
         this.container
-            .bind<IObfuscatedCode>(ServiceIdentifiers.IObfuscatedCode)
-            .to(ObfuscatedCode);
+            .bind<INodeTransformersRunner>(ServiceIdentifiers.INodeTransformersRunner)
+            .to(NodeTransformersRunner)
+            .inSingletonScope();
 
         this.container
-            .bind<IObfuscatedCode>(ServiceIdentifiers.Factory__IObfuscatedCode)
-            .toFactory<IObfuscatedCode>((context: interfaces.Context) => {
-                return (obfuscatedCodeAsString: string, sourceMapAsString: string) => {
-                    const obfuscatedCode: IObfuscatedCode = context.container
-                        .get<IObfuscatedCode>(ServiceIdentifiers.IObfuscatedCode);
+            .bind<IObfuscationResult>(ServiceIdentifiers.IObfuscationResult)
+            .to(ObfuscationResult);
 
-                    obfuscatedCode.initialize(obfuscatedCodeAsString, sourceMapAsString);
+        this.container
+            .bind<IObfuscationResult>(ServiceIdentifiers.Factory__IObfuscationResult)
+            .toFactory<IObfuscationResult, [string, string]>((context: interfaces.Context) => {
+                return (obfuscatedCodeAsString: string, sourceMapAsString: string): IObfuscationResult => {
+                    const obfuscationResult: IObfuscationResult = context.container
+                        .get<IObfuscationResult>(ServiceIdentifiers.IObfuscationResult);
 
-                    return obfuscatedCode;
+                    obfuscationResult.initialize(obfuscatedCodeAsString, sourceMapAsString);
+
+                    return obfuscationResult;
                 };
             });
 
-        this.container
-            .bind<IObfuscationEventEmitter>(ServiceIdentifiers.IObfuscationEventEmitter)
-            .to(ObfuscationEventEmitter)
-            .inSingletonScope();
-
         // modules
         this.container.load(analyzersModule);
+        this.container.load(codeTransformersModule);
         this.container.load(controlFlowTransformersModule);
         this.container.load(convertingTransformersModule);
+        this.container.load(customCodeHelpersModule);
         this.container.load(customNodesModule);
+        this.container.load(deadCodeInjectionTransformersModule);
         this.container.load(finalizingTransformersModule);
         this.container.load(generatorsModule);
+        this.container.load(initializingTransformersModule);
+        this.container.load(nodeModule);
         this.container.load(nodeTransformersModule);
-        this.container.load(obfuscatingTransformersModule);
         this.container.load(optionsModule);
         this.container.load(preparingTransformersModule);
+        this.container.load(renameIdentifiersTransformersModule);
+        this.container.load(renamePropertiesTransformersModule);
+        this.container.load(simplifyingTransformersModule);
         this.container.load(storagesModule);
+        this.container.load(stringArrayTransformersModule);
         this.container.load(utilsModule);
     }
 

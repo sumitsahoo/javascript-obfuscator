@@ -2,6 +2,7 @@ import { assert } from 'chai';
 
 import { NO_ADDITIONAL_NODES_PRESET } from '../../../../../src/options/presets/NoCustomNodes';
 
+import { getStringArrayRegExp } from '../../../../helpers/get-string-array-regexp';
 import { readFileAsString } from '../../../../helpers/readFileAsString';
 
 import { JavaScriptObfuscator } from '../../../../../src/JavaScriptObfuscatorFacade';
@@ -9,7 +10,7 @@ import { JavaScriptObfuscator } from '../../../../../src/JavaScriptObfuscatorFac
 describe('MemberExpressionTransformer', () => {
     describe('transformation of member expression node with dot notation', () => {
         describe('`stringArray` option is disabled', () => {
-            const regExp: RegExp = /var *test *= *console\['log'\];/;
+            const regExp: RegExp = /var test *= *console\['log'\];/;
 
             let obfuscatedCode: string;
 
@@ -30,8 +31,8 @@ describe('MemberExpressionTransformer', () => {
         });
 
         describe('`stringArray` option is enabled', () => {
-            const stringArrayRegExp: RegExp = /var *_0x([a-f0-9]){4} *= *\['log'\];/;
-            const stringArrayCallRegExp: RegExp = /var *test *= *console\[_0x([a-f0-9]){4}\('0x0'\)\];/;
+            const stringArrayRegExp: RegExp = getStringArrayRegExp(['log']);
+            const stringArrayCallRegExp: RegExp = /var test *= *console\[_0x([a-f0-9]){4}\(0x0\)\];/;
 
             let obfuscatedCode: string;
 
@@ -60,8 +61,8 @@ describe('MemberExpressionTransformer', () => {
 
     describe('transformation of member expression node with square brackets', () => {
         describe('Variant #1: square brackets literal ', () => {
-            const stringArrayRegExp: RegExp = /var *_0x([a-f0-9]){4} *= *\['log'\];/;
-            const stringArrayCallRegExp: RegExp = /var *test *= *console\[_0x([a-f0-9]){4}\('0x0'\)\];/;
+            const stringArrayRegExp: RegExp = getStringArrayRegExp(['log']);
+            const stringArrayCallRegExp: RegExp = /var test *= *console\[_0x([a-f0-9]){4}\(0x0\)\];/;
 
             let obfuscatedCode: string;
 
@@ -88,7 +89,7 @@ describe('MemberExpressionTransformer', () => {
         });
 
         describe('Variant #2: square brackets identifier', () => {
-            const regExp: RegExp = /var *test *= *console\[identifier\];/;
+            const regExp: RegExp = /var test *= *console\[identifier\];/;
 
             let obfuscatedCode: string;
 

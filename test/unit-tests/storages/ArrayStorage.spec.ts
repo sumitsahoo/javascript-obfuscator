@@ -74,6 +74,23 @@ describe('ArrayStorage', () => {
         });
     });
 
+    describe('getStorageId', () => {
+        const storageIdRegExp: RegExp = /^[a-zA-Z0-9]{6}$/;
+
+        let storageId: string;
+
+        before(() => {
+            storage = getStorageInstance<string>();
+            storage.set(storageKey, storageValue);
+
+            storageId = storage.getStorageId();
+        });
+
+        it('should return storage id', () => {
+            assert.match(storageId, storageIdRegExp);
+        });
+    });
+
     describe('get', () => {
         describe('Variant #1: value exist', () => {
             const expectedValue: string = storageValue;
@@ -93,6 +110,41 @@ describe('ArrayStorage', () => {
         });
 
         describe('Variant #2: value isn\'t exist', () => {
+            const expectedValue: undefined = undefined;
+
+            let value: string;
+
+            before(() => {
+                storage = getStorageInstance<string>();
+
+                value = storage.get(storageKey);
+            });
+
+            it('should return undefined if value does not exist in the storage', () => {
+                assert.equal(value, expectedValue);
+            });
+        });
+    });
+
+    describe('getOrThrow', () => {
+        describe('Variant #1: value exist', () => {
+            const expectedValue: string = storageValue;
+
+            let value: string;
+
+            before(() => {
+                storage = getStorageInstance<string>();
+                storage.set(storageKey, storageValue);
+
+                value = storage.getOrThrow(storageKey);
+            });
+
+            it('should return value from storage by key', () => {
+                assert.equal(value, expectedValue);
+            });
+        });
+
+        describe('Variant #2: value isn\'t exist', () => {
             const expectedError: ErrorConstructor = Error;
 
             let testFunc: () => void;
@@ -100,7 +152,7 @@ describe('ArrayStorage', () => {
             before(() => {
                 storage = getStorageInstance<string>();
 
-                testFunc = () => storage.get(storageKey);
+                testFunc = () => storage.getOrThrow(storageKey);
             });
 
             it('should throw an error', () => {
@@ -193,28 +245,138 @@ describe('ArrayStorage', () => {
         });
     });
 
-    describe('mergeWith', () => {
-        const secondStorageKey: number = 1;
-        const secondStorageValue: string = 'bar';
+    describe('delete', () => {
+        describe('Variant #1: value exist', () => {
+            const expectedUpdatedStorage: string[] = [
+                'foo',
+                'baz'
+            ];
+            const expectedUpdatedStorageLength: number = 2;
+            const expectedDeletedValue: string = 'bar';
 
-        const expectedArray: string[] = [storageValue, secondStorageValue];
+            let updatedStorage: string[];
+            let updatedStorageLength: number;
+            let deletedValue: string;
 
-        let array: string[];
+            before(() => {
+                storage = getStorageInstance<string>();
+                storage.set(0, 'foo');
+                storage.set(1, 'bar');
+                storage.set(2, 'baz');
 
-        before(() => {
-            storage = getStorageInstance<string>();
-            storage.set(storageKey, storageValue);
+                deletedValue = storage.delete(1);
+                updatedStorage = storage.getStorage();
+                updatedStorageLength = storage.getLength();
+            });
 
-            const secondStorage: IArrayStorage <string> = getStorageInstance<string>();
-            secondStorage.set(secondStorageKey, secondStorageValue);
+            it('should delete value from the storage by index', () => {
+                assert.deepEqual(updatedStorage, expectedUpdatedStorage);
+            });
 
-            storage.mergeWith(secondStorage, false);
+            it('should update storage length', () => {
+                assert.deepEqual(updatedStorageLength, expectedUpdatedStorageLength);
+            });
 
-            array = storage.getStorage();
+            it('should return deleted value', () => {
+                assert.equal(deletedValue, expectedDeletedValue);
+            });
         });
 
-        it('should merge two storages', () => {
-            assert.deepEqual(array, expectedArray);
+        describe('Variant #2: value isn\'t exist', () => {
+            const expectedUpdatedStorage: string[] = [
+                'foo',
+                'bar',
+                'baz'
+            ];
+            const expectedUpdatedStorageLength: number = 3;
+            const expectedDeletedValue: undefined = undefined;
+
+            let updatedStorage: string[];
+            let updatedStorageLength: number;
+            let deletedValue: string;
+
+            before(() => {
+                storage = getStorageInstance<string>();
+                storage.set(0, 'foo');
+                storage.set(1, 'bar');
+                storage.set(2, 'baz');
+
+                deletedValue = storage.delete(3);
+                updatedStorage = storage.getStorage();
+                updatedStorageLength = storage.getLength();
+            });
+
+            it('should keep storage the same', () => {
+                assert.deepEqual(updatedStorage, expectedUpdatedStorage);
+            });
+
+            it('should keep storage length', () => {
+                assert.deepEqual(updatedStorageLength, expectedUpdatedStorageLength);
+            });
+
+            it('should return undefined', () => {
+                assert.equal(deletedValue, expectedDeletedValue);
+            });
+        });
+    });
+
+    describe('mergeWith', () => {
+        describe('Base merge', () => {
+            const secondStorageKey: number = 1;
+            const secondStorageValue: string = 'bar';
+
+            const expectedArray: string[] = [storageValue, secondStorageValue];
+
+            let array: string[];
+
+            before(() => {
+                storage = getStorageInstance<string>();
+                storage.set(storageKey, storageValue);
+
+                const secondStorage: IArrayStorage <string> = getStorageInstance<string>();
+                secondStorage.set(secondStorageKey, secondStorageValue);
+
+                storage.mergeWith(secondStorage, false);
+
+                array = storage.getStorage();
+            });
+
+            it('should merge two storages', () => {
+                assert.deepEqual(array, expectedArray);
+            });
+        });
+
+        describe('Merge with storage id', () => {
+            const secondStorageKey: number = 1;
+            const secondStorageValue: string = 'bar';
+
+            const expectedArray: string[] = [storageValue, secondStorageValue];
+
+            let array: string[];
+            let storageId: string;
+            let expectedStorageId: string;
+
+            before(() => {
+                storage = getStorageInstance<string>();
+                storage.set(storageKey, storageValue);
+
+                const secondStorage: IArrayStorage <string> = getStorageInstance<string>();
+                expectedStorageId = secondStorage.getStorageId();
+                secondStorage.set(secondStorageKey, secondStorageValue);
+
+                storage.mergeWith(secondStorage, true);
+
+                storageId = storage.getStorageId();
+                array = storage.getStorage();
+            });
+
+            it('should update storage id', () => {
+                assert.deepEqual(storageId, expectedStorageId);
+            });
+
+            it('should merge two storages', () => {
+                assert.deepEqual(array, expectedArray);
+            });
         });
     });
 });

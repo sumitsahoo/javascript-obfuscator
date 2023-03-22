@@ -7,12 +7,11 @@ import { IOptions } from '../../interfaces/options/IOptions';
 import { IRandomGenerator } from '../../interfaces/utils/IRandomGenerator';
 import { IVisitor } from '../../interfaces/node-transformers/IVisitor';
 
-import { TransformationStage } from '../../enums/node-transformers/TransformationStage';
+import { NodeTransformationStage } from '../../enums/node-transformers/NodeTransformationStage';
 
 import { AbstractNodeTransformer } from '../AbstractNodeTransformer';
 import { NodeFactory } from '../../node/NodeFactory';
 import { NodeGuards } from '../../node/NodeGuards';
-import { IEscapeSequenceEncoder } from '../../interfaces/utils/IEscapeSequenceEncoder';
 
 /**
  * replaces:
@@ -24,34 +23,25 @@ import { IEscapeSequenceEncoder } from '../../interfaces/utils/IEscapeSequenceEn
 @injectable()
 export class ObjectExpressionTransformer extends AbstractNodeTransformer {
     /**
-     * @type {IEscapeSequenceEncoder}
-     */
-    private readonly escapeSequenceEncoder: IEscapeSequenceEncoder;
-
-    /**
-     * @param {IEscapeSequenceEncoder} escapeSequenceEncoder
      * @param {IRandomGenerator} randomGenerator
      * @param {IOptions} options
      */
-    constructor (
-        @inject(ServiceIdentifiers.IEscapeSequenceEncoder) escapeSequenceEncoder: IEscapeSequenceEncoder,
+    public constructor (
         @inject(ServiceIdentifiers.IRandomGenerator) randomGenerator: IRandomGenerator,
         @inject(ServiceIdentifiers.IOptions) options: IOptions
     ) {
         super(randomGenerator, options);
-
-        this.escapeSequenceEncoder = escapeSequenceEncoder;
     }
 
     /**
-     * @param {TransformationStage} transformationStage
+     * @param {NodeTransformationStage} nodeTransformationStage
      * @returns {IVisitor | null}
      */
-    public getVisitor (transformationStage: TransformationStage): IVisitor | null {
-        switch (transformationStage) {
-            case TransformationStage.Converting:
+    public getVisitor (nodeTransformationStage: NodeTransformationStage): IVisitor | null {
+        switch (nodeTransformationStage) {
+            case NodeTransformationStage.Converting:
                 return {
-                    enter: (node: ESTree.Node, parentNode: ESTree.Node | null) => {
+                    enter: (node: ESTree.Node, parentNode: ESTree.Node | null): ESTree.Node | undefined => {
                         if (parentNode && NodeGuards.isObjectExpressionNode(node)) {
                             return this.transformNode(node, parentNode);
                         }
@@ -70,7 +60,11 @@ export class ObjectExpressionTransformer extends AbstractNodeTransformer {
      */
     public transformNode (objectExpressionNode: ESTree.ObjectExpression, parentNode: ESTree.Node): ESTree.Node {
         objectExpressionNode.properties
-            .forEach((property: ESTree.Property) => {
+            .forEach((property: ESTree.Property | ESTree.SpreadElement) => {
+                if (!NodeGuards.isPropertyNode(property)) {
+                    return;
+                }
+
                 if (!property.key) {
                     return;
                 }
@@ -93,7 +87,7 @@ export class ObjectExpressionTransformer extends AbstractNodeTransformer {
             return;
         }
 
-        property.key = NodeFactory.literalNode(this.getPropertyKeyValue(property.key.value));
+        property.key = NodeFactory.literalNode(property.key.value);
     }
 
     /**
@@ -108,16 +102,6 @@ export class ObjectExpressionTransformer extends AbstractNodeTransformer {
             return;
         }
 
-        property.key = NodeFactory.literalNode(this.getPropertyKeyValue(property.key.name));
-    }
-
-    /**
-     * @param {string} inputValue
-     * @returns {string}
-     */
-    private getPropertyKeyValue (inputValue: string): string {
-        return this.options.unicodeEscapeSequence
-            ? this.escapeSequenceEncoder.encode(inputValue, true)
-            : inputValue;
+        property.key = NodeFactory.literalNode(property.key.name);
     }
 }

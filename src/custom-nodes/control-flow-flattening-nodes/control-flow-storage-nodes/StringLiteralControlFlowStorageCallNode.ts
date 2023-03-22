@@ -4,6 +4,7 @@ import { ServiceIdentifiers } from '../../../container/ServiceIdentifiers';
 import { TIdentifierNamesGeneratorFactory } from '../../../types/container/generators/TIdentifierNamesGeneratorFactory';
 import { TStatement } from '../../../types/node/TStatement';
 
+import { ICustomCodeHelperFormatter } from '../../../interfaces/custom-code-helpers/ICustomCodeHelperFormatter';
 import { IOptions } from '../../../interfaces/options/IOptions';
 import { IRandomGenerator } from '../../../interfaces/utils/IRandomGenerator';
 
@@ -29,16 +30,23 @@ export class StringLiteralControlFlowStorageCallNode extends AbstractCustomNode 
 
     /**
      * @param {TIdentifierNamesGeneratorFactory} identifierNamesGeneratorFactory
+     * @param {ICustomCodeHelperFormatter} customCodeHelperFormatter
      * @param {IRandomGenerator} randomGenerator
      * @param {IOptions} options
      */
-    constructor (
+    public constructor (
         @inject(ServiceIdentifiers.Factory__IIdentifierNamesGenerator)
             identifierNamesGeneratorFactory: TIdentifierNamesGeneratorFactory,
+        @inject(ServiceIdentifiers.ICustomCodeHelperFormatter) customCodeHelperFormatter: ICustomCodeHelperFormatter,
         @inject(ServiceIdentifiers.IRandomGenerator) randomGenerator: IRandomGenerator,
         @inject(ServiceIdentifiers.IOptions) options: IOptions
     ) {
-        super(identifierNamesGeneratorFactory, randomGenerator, options);
+        super(
+            identifierNamesGeneratorFactory,
+            customCodeHelperFormatter,
+            randomGenerator,
+            options
+        );
     }
 
     /**
@@ -53,6 +61,9 @@ export class StringLiteralControlFlowStorageCallNode extends AbstractCustomNode 
         this.controlFlowStorageKey = controlFlowStorageKey;
     }
 
+    /**
+     * @returns {TStatement[]}
+     */
     protected getNodeStructure (): TStatement[] {
         const structure: TStatement = NodeFactory.expressionStatementNode(
             NodeFactory.memberExpressionNode(

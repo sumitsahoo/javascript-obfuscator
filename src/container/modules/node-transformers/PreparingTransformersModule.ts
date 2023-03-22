@@ -9,23 +9,22 @@ import { NodeTransformer } from '../../../enums/node-transformers/NodeTransforme
 import { ObfuscatingGuard } from '../../../enums/node-transformers/preparing-transformers/obfuscating-guards/ObfuscatingGuard';
 
 import { BlackListObfuscatingGuard } from '../../../node-transformers/preparing-transformers/obfuscating-guards/BlackListObfuscatingGuard';
-import { CommentsTransformer } from '../../../node-transformers/preparing-transformers/CommentsTransformer';
 import { ConditionalCommentObfuscatingGuard } from '../../../node-transformers/preparing-transformers/obfuscating-guards/ConditionalCommentObfuscatingGuard';
-import { CustomNodesTransformer } from '../../../node-transformers/preparing-transformers/CustomNodesTransformer';
-import { EvalCallExpressionTransformer } from '../../../node-transformers/preparing-transformers/EvaCallExpressionTransformer';
+import { CustomCodeHelpersTransformer } from '../../../node-transformers/preparing-transformers/CustomCodeHelpersTransformer';
+import { EvalCallExpressionTransformer } from '../../../node-transformers/preparing-transformers/EvalCallExpressionTransformer';
+import { ForceTransformStringObfuscatingGuard } from '../../../node-transformers/preparing-transformers/obfuscating-guards/ForceTransformStringObfuscatingGuard';
+import { IgnoredImportObfuscatingGuard } from '../../../node-transformers/preparing-transformers/obfuscating-guards/IgnoredImportObfuscatingGuard';
 import { MetadataTransformer } from '../../../node-transformers/preparing-transformers/MetadataTransformer';
 import { ObfuscatingGuardsTransformer } from '../../../node-transformers/preparing-transformers/ObfuscatingGuardsTransformer';
 import { ParentificationTransformer } from '../../../node-transformers/preparing-transformers/ParentificationTransformer';
+import { ReservedStringObfuscatingGuard } from '../../../node-transformers/preparing-transformers/obfuscating-guards/ReservedStringObfuscatingGuard';
+import { VariablePreserveTransformer } from '../../../node-transformers/preparing-transformers/VariablePreserveTransformer';
 
 export const preparingTransformersModule: interfaces.ContainerModule = new ContainerModule((bind: interfaces.Bind) => {
     // preparing transformers
     bind<INodeTransformer>(ServiceIdentifiers.INodeTransformer)
-        .to(CommentsTransformer)
-        .whenTargetNamed(NodeTransformer.CommentsTransformer);
-
-    bind<INodeTransformer>(ServiceIdentifiers.INodeTransformer)
-        .to(CustomNodesTransformer)
-        .whenTargetNamed(NodeTransformer.CustomNodesTransformer);
+        .to(CustomCodeHelpersTransformer)
+        .whenTargetNamed(NodeTransformer.CustomCodeHelpersTransformer);
 
     bind<INodeTransformer>(ServiceIdentifiers.INodeTransformer)
         .to(EvalCallExpressionTransformer)
@@ -43,20 +42,39 @@ export const preparingTransformersModule: interfaces.ContainerModule = new Conta
         .to(ParentificationTransformer)
         .whenTargetNamed(NodeTransformer.ParentificationTransformer);
 
+    bind<INodeTransformer>(ServiceIdentifiers.INodeTransformer)
+        .to(VariablePreserveTransformer)
+        .whenTargetNamed(NodeTransformer.VariablePreserveTransformer);
+
     // obfuscating guards
     bind<IObfuscatingGuard>(ServiceIdentifiers.INodeGuard)
         .to(BlackListObfuscatingGuard)
         .inSingletonScope()
-        .whenTargetNamed(ObfuscatingGuard.BlackListNodeGuard);
+        .whenTargetNamed(ObfuscatingGuard.BlackListObfuscatingGuard);
 
     bind<IObfuscatingGuard>(ServiceIdentifiers.INodeGuard)
         .to(ConditionalCommentObfuscatingGuard)
         .inSingletonScope()
-        .whenTargetNamed(ObfuscatingGuard.ConditionalCommentNodeGuard);
+        .whenTargetNamed(ObfuscatingGuard.ConditionalCommentObfuscatingGuard);
+
+    bind<IObfuscatingGuard>(ServiceIdentifiers.INodeGuard)
+        .to(ForceTransformStringObfuscatingGuard)
+        .inSingletonScope()
+        .whenTargetNamed(ObfuscatingGuard.ForceTransformStringObfuscatingGuard);
+
+    bind<IObfuscatingGuard>(ServiceIdentifiers.INodeGuard)
+        .to(IgnoredImportObfuscatingGuard)
+        .inSingletonScope()
+        .whenTargetNamed(ObfuscatingGuard.IgnoredImportObfuscatingGuard);
+
+    bind<IObfuscatingGuard>(ServiceIdentifiers.INodeGuard)
+        .to(ReservedStringObfuscatingGuard)
+        .inSingletonScope()
+        .whenTargetNamed(ObfuscatingGuard.ReservedStringObfuscatingGuard);
 
     // obfuscating guards factory
     bind<IObfuscatingGuard>(ServiceIdentifiers.Factory__INodeGuard)
-        .toFactory<IObfuscatingGuard>(InversifyContainerFacade
+        .toFactory<IObfuscatingGuard, [ObfuscatingGuard]>(InversifyContainerFacade
             .getCacheFactory<ObfuscatingGuard, IObfuscatingGuard>(
                 ServiceIdentifiers.INodeGuard
             ));

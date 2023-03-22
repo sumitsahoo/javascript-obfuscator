@@ -6,7 +6,7 @@ export class NodeMetadata {
      * @param {Partial<T["metadata"]>} metadata
      */
     public static set <T extends ESTree.Node = ESTree.Node> (node: T, metadata: Partial<T['metadata']>): void {
-        node.metadata = Object.assign(node.metadata || {}, metadata);
+        node.metadata = Object.assign(node.metadata ?? {}, metadata);
     }
 
     /**
@@ -14,7 +14,10 @@ export class NodeMetadata {
      * @param {keyof T} metadataKey
      * @returns {T[keyof T] | undefined}
      */
-    public static get <T extends ESTree.BaseNodeMetadata> (node: ESTree.Node, metadataKey: keyof T): T[keyof T] | undefined {
+    public static get <
+        T extends ESTree.BaseNodeMetadata,
+        TMetadataKey extends keyof T
+    > (node: ESTree.Node, metadataKey: TMetadataKey): T[TMetadataKey] | undefined {
         return node.metadata !== undefined
             ? (<T>node.metadata)[metadataKey]
             : undefined;
@@ -24,23 +27,45 @@ export class NodeMetadata {
      * @param {Node} node
      * @returns {boolean}
      */
-    public static isIgnoredNode (node: ESTree.Node): boolean {
-        return NodeMetadata.get(node, 'ignoredNode') === true;
+    public static isEvalHostNode (node: ESTree.Node): boolean {
+        return NodeMetadata.get<ESTree.FunctionExpressionNodeMetadata, 'evalHostNode'>(node, 'evalHostNode') === true;
     }
 
     /**
-     * @param {Node} identifierNode
+     * @param {Node} node
      * @returns {boolean}
      */
-    public static isRenamedIdentifier (identifierNode: ESTree.Identifier): boolean {
-        return NodeMetadata.get<ESTree.IdentifierNodeMetadata>(identifierNode, 'renamedIdentifier') === true;
+    public static isForceTransformNode (node: ESTree.Node): boolean {
+        return NodeMetadata.get<ESTree.BaseNodeMetadata, 'forceTransformNode'>(node, 'forceTransformNode') === true;
+    }
+
+    /**
+     * @param {Node} node
+     * @returns {boolean}
+     */
+    public static isIgnoredNode (node: ESTree.Node): boolean {
+        return NodeMetadata.get<ESTree.BaseNodeMetadata, 'ignoredNode'>(node, 'ignoredNode') === true;
+    }
+
+    /**
+     * @param {Identifier | Literal} node
+     * @returns {boolean}
+     */
+    public static isPropertyKeyToRenameNode (node: ESTree.Identifier | ESTree.Literal): boolean {
+        return NodeMetadata.get<ESTree.IdentifierNodeMetadata | ESTree.LiteralNodeMetadata, 'propertyKeyToRenameNode'>(
+            node,
+            'propertyKeyToRenameNode'
+        ) === true;
     }
 
     /**
      * @param {Node} literalNode
      * @returns {boolean}
      */
-    public static isReplacedLiteral (literalNode: ESTree.Literal): boolean {
-        return NodeMetadata.get<ESTree.LiteralNodeMetadata>(literalNode, 'replacedLiteral') === true;
+    public static isStringArrayCallLiteralNode (literalNode: ESTree.Literal): boolean {
+        return NodeMetadata.get<
+            ESTree.LiteralNodeMetadata,
+            'stringArrayCallLiteralNode'
+        >(literalNode, 'stringArrayCallLiteralNode') === true;
     }
 }

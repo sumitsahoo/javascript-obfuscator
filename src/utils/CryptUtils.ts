@@ -4,11 +4,18 @@ import { ServiceIdentifiers } from '../container/ServiceIdentifiers';
 import { ICryptUtils } from '../interfaces/utils/ICryptUtils';
 import { IRandomGenerator } from '../interfaces/utils/IRandomGenerator';
 
+import { base64alphabet } from '../constants/Base64Alphabet';
+
 import { RandomGenerator } from './RandomGenerator';
 import { Utils } from './Utils';
 
 @injectable()
 export class CryptUtils implements ICryptUtils {
+    /**
+     * @type {string}
+     */
+    protected readonly base64Alphabet: string = base64alphabet;
+
     /**
      * @type {IRandomGenerator}
      */
@@ -17,24 +24,23 @@ export class CryptUtils implements ICryptUtils {
     /**
      * @param {IRandomGenerator} randomGenerator
      */
-    constructor (
+    public constructor (
         @inject(ServiceIdentifiers.IRandomGenerator) randomGenerator: IRandomGenerator
     ) {
         this.randomGenerator = randomGenerator;
     }
 
-    // tslint:disable
     /**
      * @param {string} string
      * @returns {string}
      */
     public btoa (string: string): string {
-        const chars: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+        const chars: string = this.base64Alphabet;
 
         let output: string = '';
 
-        string = encodeURIComponent(string).replace(/%([0-9A-F]{2})/g, (match, p1) => {
-            return String.fromCharCode(parseInt(`${Utils.hexadecimalPrefix}${p1}`));
+        string = encodeURIComponent(string).replace(/%([0-9A-F]{2})/g, (match: string, p1: string) => {
+            return String.fromCharCode(parseInt(`${Utils.hexadecimalPrefix}${p1}`, 16));
         });
 
         for (
@@ -45,7 +51,7 @@ export class CryptUtils implements ICryptUtils {
             charCode = string.charCodeAt(idx += 3/4);
 
             if (charCode > 0xFF) {
-                throw new Error("'btoa' failed: The string to be encoded contains characters outside of the Latin1 range.");
+                throw new Error('\'btoa\' failed: The string to be encoded contains characters outside of the Latin1 range.');
             }
 
             block = <number>block << 8 | charCode;
@@ -53,7 +59,6 @@ export class CryptUtils implements ICryptUtils {
 
         return output;
     }
-    // tslint:enable
 
     /**
      * Hides string inside a other random string with larger length
@@ -100,7 +105,6 @@ export class CryptUtils implements ICryptUtils {
         return [randomMerge(str, randomStringDiff), randomStringDiff];
     }
 
-    // tslint:disable
     /**
      * RC4 symmetric cipher encryption/decryption
      * https://gist.github.com/farhadi/2185197
@@ -110,11 +114,13 @@ export class CryptUtils implements ICryptUtils {
      * @returns {string}
      */
     public rc4 (string: string, key: string): string {
-        let s: number[] = [],
-            j: number = 0,
-            x: number,
-            result: string = '';
+        const s: number[] = [];
 
+        let j: number = 0;
+        let x: number;
+        let result: string = '';
+
+        // eslint-disable-next-line no-var
         for (var i = 0; i < 256; i++) {
             s[i] = i;
         }
@@ -140,5 +146,4 @@ export class CryptUtils implements ICryptUtils {
 
         return result;
     }
-    // tslint:enable
 }

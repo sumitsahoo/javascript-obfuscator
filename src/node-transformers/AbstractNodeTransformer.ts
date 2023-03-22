@@ -1,7 +1,7 @@
 import { inject, injectable } from 'inversify';
 import { ServiceIdentifiers } from '../container/ServiceIdentifiers';
 
-import * as estraverse from 'estraverse';
+import * as estraverse from '@javascript-obfuscator/estraverse';
 import * as ESTree from 'estree';
 
 import { INodeTransformer } from '../interfaces/node-transformers/INodeTransformer';
@@ -9,10 +9,16 @@ import { IOptions } from '../interfaces/options/IOptions';
 import { IRandomGenerator } from '../interfaces/utils/IRandomGenerator';
 import { IVisitor } from '../interfaces/node-transformers/IVisitor';
 
-import { TransformationStage } from '../enums/node-transformers/TransformationStage';
+import { NodeTransformer } from '../enums/node-transformers/NodeTransformer';
+import { NodeTransformationStage } from '../enums/node-transformers/NodeTransformationStage';
 
 @injectable()
 export abstract class AbstractNodeTransformer implements INodeTransformer {
+    /**
+     * @type {NodeTransformer[] | undefined}
+     */
+    public readonly runAfter: NodeTransformer[] | undefined;
+
     /**
      * @type {IOptions}
      */
@@ -27,7 +33,7 @@ export abstract class AbstractNodeTransformer implements INodeTransformer {
      * @param {IRandomGenerator} randomGenerator
      * @param {IOptions} options
      */
-    constructor (
+    public constructor (
         @inject(ServiceIdentifiers.IRandomGenerator) randomGenerator: IRandomGenerator,
         @inject(ServiceIdentifiers.IOptions) options: IOptions
     ) {
@@ -36,10 +42,10 @@ export abstract class AbstractNodeTransformer implements INodeTransformer {
     }
 
     /**
-     * @param {TransformationStage} transformationStage
+     * @param {NodeTransformationStage} nodeTransformationStage
      * @returns {IVisitor | null}
      */
-    public abstract getVisitor (transformationStage: TransformationStage): IVisitor | null;
+    public abstract getVisitor (nodeTransformationStage: NodeTransformationStage): IVisitor | null;
 
     /**
      * @param {Node} node

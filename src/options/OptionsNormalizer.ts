@@ -8,14 +8,19 @@ import { IOptionsNormalizer } from '../interfaces/options/IOptionsNormalizer';
 import { ControlFlowFlatteningThresholdRule } from './normalizer-rules/ControlFlowFlatteningThresholdRule';
 import { DeadCodeInjectionRule } from './normalizer-rules/DeadCodeInjectionRule';
 import { DeadCodeInjectionThresholdRule } from './normalizer-rules/DeadCodeInjectionThresholdRule';
+import { DomainLockRedirectUrlRule } from './normalizer-rules/DomainLockRedirectUrlRule';
 import { DomainLockRule } from './normalizer-rules/DomainLockRule';
+import { IdentifierNamesCacheRule } from './normalizer-rules/IdentifierNamesCacheRule';
 import { InputFileNameRule } from './normalizer-rules/InputFileNameRule';
+import { SeedRule } from './normalizer-rules/SeedRule';
 import { SelfDefendingRule } from './normalizer-rules/SelfDefendingRule';
 import { SourceMapBaseUrlRule } from './normalizer-rules/SourceMapBaseUrlRule';
 import { SourceMapFileNameRule } from './normalizer-rules/SourceMapFileNameRule';
+import { SplitStringsChunkLengthRule } from './normalizer-rules/SplitStringsChunkLengthRule';
 import { StringArrayRule } from './normalizer-rules/StringArrayRule';
+import { StringArrayCallsTransformThresholdRule } from './normalizer-rules/StringArrayCallsTransformThresholdRule';
 import { StringArrayEncodingRule } from './normalizer-rules/StringArrayEncodingRule';
-import { StringArrayThresholdRule } from './normalizer-rules/StringArrayThresholdRule';
+import { StringArrayWrappersChainedCallsRule } from './normalizer-rules/StringArrayWappersChainedCalls';
 
 @injectable()
 export class OptionsNormalizer implements IOptionsNormalizer {
@@ -26,14 +31,19 @@ export class OptionsNormalizer implements IOptionsNormalizer {
         ControlFlowFlatteningThresholdRule,
         DeadCodeInjectionRule,
         DeadCodeInjectionThresholdRule,
+        DomainLockRedirectUrlRule,
         DomainLockRule,
+        IdentifierNamesCacheRule,
         InputFileNameRule,
+        SeedRule,
         SelfDefendingRule,
         SourceMapBaseUrlRule,
         SourceMapFileNameRule,
+        SplitStringsChunkLengthRule,
         StringArrayRule,
+        StringArrayCallsTransformThresholdRule,
         StringArrayEncodingRule,
-        StringArrayThresholdRule,
+        StringArrayWrappersChainedCallsRule,
     ];
 
     /**

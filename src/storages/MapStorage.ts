@@ -6,19 +6,10 @@ import { IOptions } from '../interfaces/options/IOptions';
 import { IRandomGenerator } from '../interfaces/utils/IRandomGenerator';
 
 import { initializable } from '../decorators/Initializable';
+import { TDictionary } from '../types/TDictionary';
 
 @injectable()
 export abstract class MapStorage <K, V> implements IMapStorage <K, V> {
-    /**
-     * @type {IOptions}
-     */
-    protected readonly options: IOptions;
-
-    /**
-     * @type {IRandomGenerator}
-     */
-    protected readonly randomGenerator: IRandomGenerator;
-
     /**
      * @type {string}
      */
@@ -32,10 +23,20 @@ export abstract class MapStorage <K, V> implements IMapStorage <K, V> {
     protected storage!: Map <K, V>;
 
     /**
+     * @type {IOptions}
+     */
+    protected readonly options: IOptions;
+
+    /**
+     * @type {IRandomGenerator}
+     */
+    protected readonly randomGenerator: IRandomGenerator;
+
+    /**
      * @param {IRandomGenerator} randomGenerator
      * @param {IOptions} options
      */
-    constructor (
+    public constructor (
         @inject(ServiceIdentifiers.IRandomGenerator) randomGenerator: IRandomGenerator,
         @inject(ServiceIdentifiers.IOptions) options: IOptions
     ) {
@@ -51,10 +52,18 @@ export abstract class MapStorage <K, V> implements IMapStorage <K, V> {
 
     /**
      * @param {K} key
+     * @returns {V | undefined}
+     */
+    public get (key: K): V | undefined {
+        return this.storage.get(key);
+    }
+
+    /**
+     * @param {K} key
      * @returns {V}
      */
-    public get (key: K): V {
-        const value: V | undefined = this.storage.get(key);
+    public getOrThrow (key: K): V {
+        const value: V | undefined = this.get(key);
 
         if (!value) {
             throw new Error(`No value found in map storage with key \`${key}\``);
@@ -89,6 +98,13 @@ export abstract class MapStorage <K, V> implements IMapStorage <K, V> {
      */
     public getStorage (): Map <K, V> {
         return this.storage;
+    }
+
+    /**
+     * @returns {TDictionary<V>}
+     */
+    public getStorageAsDictionary (): TDictionary<V> {
+        return Object.fromEntries(this.storage);
     }
 
     /**

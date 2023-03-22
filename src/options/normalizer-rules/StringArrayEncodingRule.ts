@@ -2,19 +2,21 @@ import { TOptionsNormalizerRule } from '../../types/options/TOptionsNormalizerRu
 
 import { IOptions } from '../../interfaces/options/IOptions';
 
-import { StringArrayEncoding } from '../../enums/StringArrayEncoding';
+import { StringArrayEncoding } from '../../enums/node-transformers/string-array-transformers/StringArrayEncoding';
 
 /**
  * @param {IOptions} options
  * @returns {IOptions}
  */
 export const StringArrayEncodingRule: TOptionsNormalizerRule = (options: IOptions): IOptions => {
-    if (options.stringArrayEncoding === true) {
+    if (!options.stringArrayEncoding.length) {
         options = {
             ...options,
-            stringArrayEncoding: StringArrayEncoding.Base64
+            stringArrayEncoding: [
+                StringArrayEncoding.None
+            ]
         };
     }
-
+    
     return options;
 };

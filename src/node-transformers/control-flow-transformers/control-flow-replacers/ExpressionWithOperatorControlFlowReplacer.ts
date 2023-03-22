@@ -4,6 +4,8 @@ import { ServiceIdentifiers } from '../../../container/ServiceIdentifiers';
 import * as ESTree from 'estree';
 
 import { TControlFlowCustomNodeFactory } from '../../../types/container/custom-nodes/TControlFlowCustomNodeFactory';
+import { TIdentifierNamesGeneratorFactory } from '../../../types/container/generators/TIdentifierNamesGeneratorFactory';
+import { TInitialData } from '../../../types/TInitialData';
 import { TStatement } from '../../../types/node/TStatement';
 
 import { ICustomNode } from '../../../interfaces/custom-nodes/ICustomNode';
@@ -13,22 +15,31 @@ import { IRandomGenerator } from '../../../interfaces/utils/IRandomGenerator';
 import { ControlFlowCustomNode } from '../../../enums/custom-nodes/ControlFlowCustomNode';
 
 import { AbstractControlFlowReplacer } from './AbstractControlFlowReplacer';
+import { ExpressionWithOperatorControlFlowStorageCallNode } from '../../../custom-nodes/control-flow-flattening-nodes/control-flow-storage-nodes/ExpressionWithOperatorControlFlowStorageCallNode';
 import { NodeGuards } from '../../../node/NodeGuards';
 
 @injectable()
 export abstract class ExpressionWithOperatorControlFlowReplacer extends AbstractControlFlowReplacer {
     /**
      * @param {TControlFlowCustomNodeFactory} controlFlowCustomNodeFactory
+     * @param {TIdentifierNamesGeneratorFactory} identifierNamesGeneratorFactory
      * @param {IRandomGenerator} randomGenerator
      * @param {IOptions} options
      */
-    constructor (
+    public constructor (
         @inject(ServiceIdentifiers.Factory__IControlFlowCustomNode)
             controlFlowCustomNodeFactory: TControlFlowCustomNodeFactory,
+        @inject(ServiceIdentifiers.Factory__IIdentifierNamesGenerator)
+            identifierNamesGeneratorFactory: TIdentifierNamesGeneratorFactory,
         @inject(ServiceIdentifiers.IRandomGenerator) randomGenerator: IRandomGenerator,
         @inject(ServiceIdentifiers.IOptions) options: IOptions
     ) {
-        super(controlFlowCustomNodeFactory, randomGenerator, options);
+        super(
+            controlFlowCustomNodeFactory,
+            identifierNamesGeneratorFactory,
+            randomGenerator,
+            options
+        );
     }
 
     /**
@@ -44,16 +55,15 @@ export abstract class ExpressionWithOperatorControlFlowReplacer extends Abstract
         leftExpression: ESTree.Expression,
         rightExpression: ESTree.Expression
     ): ESTree.Node {
-        const controlFlowStorageCallCustomNode: ICustomNode = this.controlFlowCustomNodeFactory(
-            ControlFlowCustomNode.ExpressionWithOperatorControlFlowStorageCallNode
-        );
+        const controlFlowStorageCallCustomNode: ICustomNode<TInitialData<ExpressionWithOperatorControlFlowStorageCallNode>> =
+            this.controlFlowCustomNodeFactory(ControlFlowCustomNode.ExpressionWithOperatorControlFlowStorageCallNode);
 
         controlFlowStorageCallCustomNode.initialize(controlFlowStorageId, storageKey, leftExpression, rightExpression);
 
         const statementNode: TStatement = controlFlowStorageCallCustomNode.getNode()[0];
 
         if (!statementNode || !NodeGuards.isExpressionStatementNode(statementNode)) {
-            throw new Error(`\`controlFlowStorageCallCustomNode.getNode()[0]\` should returns array with \`ExpressionStatement\` node`);
+            throw new Error('`controlFlowStorageCallCustomNode.getNode()[0]` should returns array with `ExpressionStatement` node');
         }
 
         return statementNode.expression;

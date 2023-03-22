@@ -15,19 +15,15 @@ module.exports = {
         exprContextCritical: false,
         rules: [
             {
-                test: /\.ts(x?)$/,
-                loader: 'awesome-typescript-loader',
-                query: {
-                    configFileName: 'src/tsconfig.browser.json',
-                    useBabel: true,
-                    babelCore: '@babel/core',
-                    useCache: true,
-                    forceIsolatedModules: true
-                }
+                test: /\.ts$/,
+                loader: 'ts-loader'
             }
         ]
     },
     resolve: {
+        alias: {
+            assert: 'assert'
+        },
         extensions: ['.ts', '.js']
     },
     plugins: [
@@ -40,6 +36,9 @@ module.exports = {
         ),
         new webpack.EnvironmentPlugin({
             VERSION: packageJson.version
+        }),
+        new webpack.ProvidePlugin({
+            process: ['process']
         })
     ],
     output: {
@@ -51,7 +50,7 @@ module.exports = {
         hints: false
     },
     stats: {
-        maxModules: 0,
+        excludeModules: true,
         warnings: false
     }
 };

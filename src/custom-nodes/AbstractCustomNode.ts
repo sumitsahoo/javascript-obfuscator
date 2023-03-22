@@ -5,27 +5,24 @@ import { TIdentifierNamesGeneratorFactory } from '../types/container/generators/
 import { TStatement } from '../types/node/TStatement';
 
 import { ICustomNode } from '../interfaces/custom-nodes/ICustomNode';
+import { ICustomCodeHelperFormatter } from '../interfaces/custom-code-helpers/ICustomCodeHelperFormatter';
 import { IIdentifierNamesGenerator } from '../interfaces/generators/identifier-names-generators/IIdentifierNamesGenerator';
 import { IOptions } from '../interfaces/options/IOptions';
 import { IRandomGenerator } from '../interfaces/utils/IRandomGenerator';
 
-import { GlobalVariableTemplate1 } from '../templates/GlobalVariableTemplate1';
-import { GlobalVariableTemplate2 } from '../templates/GlobalVariableTemplate2';
-
 @injectable()
-export abstract class AbstractCustomNode implements ICustomNode {
-    /**
-     * @type {string[]}
-     */
-    private static readonly globalVariableTemplateFunctions: string[] = [
-        GlobalVariableTemplate1(),
-        GlobalVariableTemplate2()
-    ];
-
+export abstract class AbstractCustomNode <
+    TInitialData extends unknown[] = unknown[]
+> implements ICustomNode <TInitialData> {
     /**
      * @type {TStatement[] | null}
      */
     protected cachedNode: TStatement[] | null = null;
+
+    /**
+     * @type {ICustomCodeHelperFormatter}
+     */
+    protected readonly customCodeHelperFormatter: ICustomCodeHelperFormatter;
 
     /**
      * @type {IIdentifierNamesGenerator}
@@ -44,44 +41,40 @@ export abstract class AbstractCustomNode implements ICustomNode {
 
     /**
      * @param {TIdentifierNamesGeneratorFactory} identifierNamesGeneratorFactory
+     * @param {ICustomCodeHelperFormatter} customCodeHelperFormatter
      * @param {IRandomGenerator} randomGenerator
      * @param {IOptions} options
      */
-    constructor (
+    public constructor (
         @inject(ServiceIdentifiers.Factory__IIdentifierNamesGenerator)
             identifierNamesGeneratorFactory: TIdentifierNamesGeneratorFactory,
+        @inject(ServiceIdentifiers.ICustomCodeHelperFormatter) customCodeHelperFormatter: ICustomCodeHelperFormatter,
         @inject(ServiceIdentifiers.IRandomGenerator) randomGenerator: IRandomGenerator,
         @inject(ServiceIdentifiers.IOptions) options: IOptions
     ) {
         this.identifierNamesGenerator = identifierNamesGeneratorFactory(options);
+        this.customCodeHelperFormatter = customCodeHelperFormatter;
         this.randomGenerator = randomGenerator;
         this.options = options;
     }
-
-    /**
-     * @param {unknown[]} args
-     */
-    public abstract initialize (...args: unknown[]): void;
 
     /**
      * @returns {TStatement[]}
      */
     public getNode (): TStatement[] {
         if (!this.cachedNode) {
-            this.cachedNode = this.getNodeStructure();
+            this.cachedNode = this.customCodeHelperFormatter.formatStructure(
+                this.getNodeStructure()
+            );
         }
 
         return this.cachedNode;
     }
 
     /**
-     * @returns {string}
+     * @param {TInitialData} args
      */
-    protected getGlobalVariableTemplate (): string {
-        return this.randomGenerator
-            .getRandomGenerator()
-            .pickone(AbstractCustomNode.globalVariableTemplateFunctions);
-    }
+    public abstract initialize (...args: TInitialData): void;
 
     /**
      * @returns {TStatement[]}

@@ -1,30 +1,48 @@
+/* eslint-disable max-lines */
 import * as commander from 'commander';
 import * as path from 'path';
 
 import { TInputCLIOptions } from '../types/options/TInputCLIOptions';
 import { TInputOptions } from '../types/options/TInputOptions';
-import { TSourceCodeData } from '../types/cli/TSourceCodeData';
 
 import { IFileData } from '../interfaces/cli/IFileData';
 import { IInitializable } from '../interfaces/IInitializable';
-import { IObfuscatedCode } from '../interfaces/source-code/IObfuscatedCode';
+import { IObfuscationResult } from '../interfaces/source-code/IObfuscationResult';
 
 import { initializable } from '../decorators/Initializable';
+
+import { IdentifierNamesGenerator } from '../enums/generators/identifier-names-generators/IdentifierNamesGenerator';
+import { LoggingPrefix } from '../enums/logger/LoggingPrefix';
+import { ObfuscationTarget } from '../enums/ObfuscationTarget';
+import { OptionsPreset } from '../enums/options/presets/OptionsPreset';
+import { RenamePropertiesMode } from '../enums/node-transformers/rename-properties-transformers/RenamePropertiesMode';
+import { SourceMapMode } from '../enums/source-map/SourceMapMode';
+import { SourceMapSourcesMode } from '../enums/source-map/SourceMapSourcesMode';
+import { StringArrayEncoding } from '../enums/node-transformers/string-array-transformers/StringArrayEncoding';
+import { StringArrayIndexesType } from '../enums/node-transformers/string-array-transformers/StringArrayIndexesType';
+import { StringArrayWrappersType } from '../enums/node-transformers/string-array-transformers/StringArrayWrappersType';
 
 import { DEFAULT_PRESET } from '../options/presets/Default';
 
 import { ArraySanitizer } from './sanitizers/ArraySanitizer';
 import { BooleanSanitizer } from './sanitizers/BooleanSanitizer';
-import { IdentifierNamesGeneratorSanitizer } from './sanitizers/IdentifierNamesGeneratorSanitizer';
-import { ObfuscationTargetSanitizer } from './sanitizers/ObfuscatingTargetSanitizer';
-import { SourceMapModeSanitizer } from './sanitizers/SourceMapModeSanitizer';
-import { StringArrayEncodingSanitizer } from './sanitizers/StringArrayEncodingSanitizer';
 
 import { CLIUtils } from './utils/CLIUtils';
+import { IdentifierNamesCacheFileUtils } from './utils/IdentifierNamesCacheFileUtils';
 import { JavaScriptObfuscator } from '../JavaScriptObfuscatorFacade';
-import { SourceCodeReader } from './utils/SourceCodeReader';
+import { Logger } from '../logger/Logger';
+import { ObfuscatedCodeFileUtils } from './utils/ObfuscatedCodeFileUtils';
+import { SourceCodeFileUtils } from './utils/SourceCodeFileUtils';
+import { Utils } from '../utils/Utils';
 
 export class JavaScriptObfuscatorCLI implements IInitializable {
+    /**
+     * @type {string[]}
+     */
+    public static readonly availableInputExtensions: string[] = [
+        '.js'
+    ];
+
     /**
      * @type {BufferEncoding}
      */
@@ -33,28 +51,19 @@ export class JavaScriptObfuscatorCLI implements IInitializable {
     /**
      * @type {string}
      */
-    public static obfuscatedFilePrefix: string = '-obfuscated';
+    public static readonly obfuscatedFilePrefix: string = '-obfuscated';
 
     /**
-     * @type {string}
-     */
-    private static readonly baseIdentifiersPrefix: string = 'a';
-
-    /**
-     * @type {string[]}
-     */
-    private readonly arguments: string[];
-
-    /**
-     * @type {string[]}
-     */
-    private readonly rawArguments: string[];
-
-    /**
-     * @type {commander.CommanderStatic}
+     * @type {commander.Command}
      */
     @initializable()
-    private commands!: commander.CommanderStatic;
+    private commands!: commander.Command;
+
+    /**
+     * @type {IdentifierNamesCacheFileUtils}
+     */
+    @initializable()
+    private identifierNamesCacheFileUtils!: IdentifierNamesCacheFileUtils;
 
     /**
      * @type {TInputCLIOptions}
@@ -69,11 +78,50 @@ export class JavaScriptObfuscatorCLI implements IInitializable {
     private inputPath!: string;
 
     /**
+     * @type {SourceCodeFileUtils}
+     */
+    @initializable()
+    private sourceCodeFileUtils!: SourceCodeFileUtils;
+
+    /**
+     * @type {ObfuscatedCodeFileUtils}
+     */
+    @initializable()
+    private obfuscatedCodeFileUtils!: ObfuscatedCodeFileUtils;
+
+    /**
+     * @type {string[]}
+     */
+    private readonly arguments: string[];
+
+    /**
+     * @type {string[]}
+     */
+    private readonly rawArguments: string[];
+
+    /**
      * @param {string[]} argv
      */
-    constructor (argv: string[]) {
+    public constructor (argv: string[]) {
         this.rawArguments = argv;
         this.arguments = argv.slice(2);
+    }
+
+    /**
+     * @param {TInputCLIOptions} inputOptions
+     * @returns {TInputOptions}
+     */
+    private static buildOptions (inputOptions: TInputCLIOptions): TInputOptions {
+        const inputCLIOptions: TInputOptions = JavaScriptObfuscatorCLI.filterOptions(inputOptions);
+        const configFilePath: string | undefined = inputOptions.config;
+        const configFileLocation: string = configFilePath ? path.resolve(configFilePath, '.') : '';
+        const configFileOptions: TInputOptions = configFileLocation ? CLIUtils.getUserConfig(configFileLocation) : {};
+
+        return {
+            ...DEFAULT_PRESET,
+            ...configFileOptions,
+            ...inputCLIOptions
+        };
     }
 
     /**
@@ -96,58 +144,23 @@ export class JavaScriptObfuscatorCLI implements IInitializable {
         return filteredOptions;
     }
 
-    /**
-     * @param {string} sourceCode
-     * @param {string} outputCodePath
-     * @param {TInputOptions} options
-     */
-    private static processSourceCodeWithoutSourceMap (
-        sourceCode: string,
-        outputCodePath: string,
-        options: TInputOptions
-    ): void {
-        const obfuscatedCode: string = JavaScriptObfuscator.obfuscate(sourceCode, options).getObfuscatedCode();
-
-        CLIUtils.writeFile(outputCodePath, obfuscatedCode);
-    }
-
-    /**
-     * @param {string} sourceCode
-     * @param {string} outputCodePath
-     * @param {TInputOptions} options
-     */
-    private static processSourceCodeWithSourceMap (
-        sourceCode: string,
-        outputCodePath: string,
-        options: TInputOptions
-    ): void {
-        const outputSourceMapPath: string = CLIUtils.getOutputSourceMapPath(
-            outputCodePath,
-            options.sourceMapFileName || ''
-        );
-
-        options = {
-            ...options,
-            sourceMapFileName: path.basename(outputSourceMapPath)
-        };
-
-        const obfuscatedCode: IObfuscatedCode = JavaScriptObfuscator.obfuscate(sourceCode, options);
-
-        CLIUtils.writeFile(outputCodePath, obfuscatedCode.getObfuscatedCode());
-
-        if (options.sourceMapMode === 'separate' && obfuscatedCode.getSourceMap()) {
-            CLIUtils.writeFile(outputSourceMapPath, obfuscatedCode.getSourceMap());
-        }
-    }
-
     public initialize (): void {
-        this.inputPath = path.normalize(this.arguments[0] || '');
-        this.commands = <commander.CommanderStatic>(new commander.Command());
+        this.commands = new commander.Command();
 
         this.configureCommands();
         this.configureHelp();
 
-        this.inputCLIOptions = this.commands.opts();
+        this.inputPath = path.normalize(this.commands.args[0] || '');
+        this.inputCLIOptions = JavaScriptObfuscatorCLI.buildOptions(this.commands.opts());
+        this.sourceCodeFileUtils = new SourceCodeFileUtils(
+            this.inputPath,
+            this.inputCLIOptions
+        );
+        this.obfuscatedCodeFileUtils = new ObfuscatedCodeFileUtils(
+            this.inputPath,
+            this.inputCLIOptions
+        );
+        this.identifierNamesCacheFileUtils = new IdentifierNamesCacheFileUtils(this.inputCLIOptions.identifierNamesCachePath);
     }
 
     public run (): void {
@@ -159,35 +172,16 @@ export class JavaScriptObfuscatorCLI implements IInitializable {
             return;
         }
 
-        const sourceCodeData: TSourceCodeData = new SourceCodeReader(this.inputCLIOptions)
-            .readSourceCode(this.inputPath);
+        const sourceCodeData: IFileData[] = this.sourceCodeFileUtils.readSourceCode();
 
         this.processSourceCodeData(sourceCodeData);
-    }
-
-    /**
-     * @returns {TInputOptions}
-     */
-    private buildOptions (): TInputOptions {
-        const inputCLIOptions: TInputOptions = JavaScriptObfuscatorCLI.filterOptions(this.inputCLIOptions);
-        const configFilePath: string | undefined = this.inputCLIOptions.config;
-        const configFileLocation: string = configFilePath ? path.resolve(configFilePath, '.') : '';
-        const configFileOptions: TInputOptions = configFileLocation ? CLIUtils.getUserConfig(configFileLocation) : {};
-        const inputFileName: string = path.basename(this.inputPath);
-
-        return {
-            ...DEFAULT_PRESET,
-            ...configFileOptions,
-            ...inputCLIOptions,
-            inputFileName
-        };
     }
 
     private configureCommands (): void {
         this.commands
             .usage('<inputPath> [options]')
             .version(
-                process.env.VERSION || 'unknown',
+                Utils.buildVersionMessage(process.env.VERSION, process.env.BUILD_TIMESTAMP),
                 '-v, --version'
             )
             .option(
@@ -229,9 +223,9 @@ export class JavaScriptObfuscatorCLI implements IInitializable {
                 BooleanSanitizer
             )
             .option(
-                '--debug-protection-interval <boolean>',
-                'Disable browser Debug panel even after page was loaded (can cause DevTools enabled browser freeze)',
-                BooleanSanitizer
+                '--debug-protection-interval <number>',
+                'Sets interval in milliseconds for debug protection so it is working even after page was loaded (can cause DevTools enabled browser freeze)',
+                parseInt
             )
             .option(
                 '--disable-console-output <boolean>',
@@ -240,8 +234,12 @@ export class JavaScriptObfuscatorCLI implements IInitializable {
             )
             .option(
                 '--domain-lock <list> (comma separated, without whitespaces)',
-                'Blocks the execution of the code in domains that do not match the passed RegExp patterns (comma separated)',
+                'Allows to run the obfuscated source code only on specific domains and/or sub-domains (comma separated)',
                 ArraySanitizer
+            )
+            .option(
+                '--domain-lock-redirect-url <string>',
+                'Allows the browser to be redirected to a passed URL if the source code isn\'t run on the domains specified by --domain-lock',
             )
             .option(
                 '--exclude <list> (comma separated, without whitespaces)',
@@ -249,19 +247,46 @@ export class JavaScriptObfuscatorCLI implements IInitializable {
                 ArraySanitizer
             )
             .option(
+                '--force-transform-strings <list> (comma separated, without whitespaces)',
+                'Enables force transformation of string literals, which being matched by passed RegExp patterns (comma separated)',
+                ArraySanitizer
+            )
+            .option(
+                '--identifier-names-cache-path <string>',
+                'Sets path for identifier names cache'
+            )
+            .option(
                 '--identifier-names-generator <string>',
                 'Sets identifier names generator. ' +
-                'Values: hexadecimal, mangled. ' +
-                'Default: hexadecimal',
-                IdentifierNamesGeneratorSanitizer
+                `Values: ${CLIUtils.stringifyOptionAvailableValues(IdentifierNamesGenerator)}. ` +
+                `Default: ${IdentifierNamesGenerator.HexadecimalIdentifierNamesGenerator}`
             )
             .option(
                 '--identifiers-prefix <string>',
-                'Sets prefix for all global identifiers.'
+                'Sets prefix for all global identifiers'
+            )
+            .option(
+                '--identifiers-dictionary <list> (comma separated, without whitespaces)',
+                'Identifiers dictionary (comma separated) for `--identifier-names-generator dictionary` option',
+                ArraySanitizer
+            )
+            .option(
+                '--ignore-imports <boolean>', 'Prevents obfuscation of `require` and `dynamic` imports',
+                BooleanSanitizer
             )
             .option(
                 '--log <boolean>', 'Enables logging of the information to the console',
                 BooleanSanitizer
+            )
+            .option(
+                '--numbers-to-expressions <boolean>', 'Enables numbers conversion to expressions',
+                BooleanSanitizer
+            )
+            .option(
+                '--options-preset <string>',
+                'Allows to set options preset. ' +
+                `Values: ${CLIUtils.stringifyOptionAvailableValues(OptionsPreset)}. ` +
+                `Default: ${OptionsPreset.Default}`
             )
             .option(
                 '--reserved-names <list> (comma separated, without whitespaces)',
@@ -274,21 +299,31 @@ export class JavaScriptObfuscatorCLI implements IInitializable {
                 ArraySanitizer
             )
             .option(
-                '--rename-globals <boolean>', 'Allows to enable obfuscation of global variable and function names with declaration.',
+                '--rename-globals <boolean>', 'Allows to enable obfuscation of global variable and function names with declaration',
                 BooleanSanitizer
             )
             .option(
-                '--rotate-string-array <boolean>', 'Disable rotation of unicode array values during obfuscation',
+                '--rename-properties <boolean>', 'UNSAFE: Enables renaming of property names. This probably MAY break your code',
                 BooleanSanitizer
             )
             .option(
-                '--seed <number>',
+                '--rename-properties-mode <boolean>',
+                'Specify `--rename-properties` option mode. ' +
+                `Values: ${CLIUtils.stringifyOptionAvailableValues(RenamePropertiesMode)}. ` +
+                `Default: ${RenamePropertiesMode.Safe}`
+            )
+            .option(
+                '--seed <string|number>',
                 'Sets seed for random generator. This is useful for creating repeatable results.',
                 parseFloat
             )
             .option(
                 '--self-defending <boolean>',
                 'Disables self-defending for obfuscated code',
+                BooleanSanitizer
+            )
+            .option(
+                '--simplify <boolean>', 'Enables additional code obfuscation through simplification',
                 BooleanSanitizer
             )
             .option(
@@ -307,21 +342,87 @@ export class JavaScriptObfuscatorCLI implements IInitializable {
             .option(
                 '--source-map-mode <string>',
                 'Specify source map output mode. ' +
-                'Values: inline, separate. ' +
-                'Default: separate',
-                SourceMapModeSanitizer
+                `Values: ${CLIUtils.stringifyOptionAvailableValues(SourceMapMode)}. ` +
+                `Default: ${SourceMapMode.Separate}`
             )
             .option(
-                '--string-array <boolean>',
-                'Disables gathering of all literal strings into an array and replacing every literal string with an array call',
+                '--source-map-sources-mode <string>',
+                'Specify source map sources mode. ' +
+                `Values: ${CLIUtils.stringifyOptionAvailableValues(SourceMapSourcesMode)}. ` +
+                `Default: ${SourceMapSourcesMode.SourcesContent}`
+            )
+            .option(
+                '--split-strings <boolean>',
+                'Splits literal strings into chunks with length of `splitStringsChunkLength` option value',
                 BooleanSanitizer
             )
             .option(
-                '--string-array-encoding <string|boolean>',
-                'Encodes all strings in strings array using base64 or rc4 (this option can slow down your code speed. ' +
-                'Values: true, false, base64, rc4. ' +
-                'Default: false',
-                StringArrayEncodingSanitizer
+                '--split-strings-chunk-length <number>',
+                'Sets chunk length of `splitStrings` option',
+                parseFloat
+            )
+            .option(
+                '--string-array <boolean>',
+                'Enables gathering of all literal strings into an array and replacing every literal string with an array call',
+                BooleanSanitizer
+            )
+            .option(
+                '--string-array-calls-transform <boolean>',
+                'Enables the transformation of calls to the string array',
+                BooleanSanitizer
+            )
+            .option(
+                '--string-array-calls-transform-threshold <number>',
+                'The probability that that calls to the string array will be transformed',
+                parseFloat
+            )
+            .option(
+                '--string-array-encoding <list> (comma separated, without whitespaces)',
+                'Encodes each string in strings array using base64 or rc4 (this option can slow down your code speed). ' +
+                `Values: ${CLIUtils.stringifyOptionAvailableValues(StringArrayEncoding)}. ` +
+                `Default: ${StringArrayEncoding.None}`,
+                ArraySanitizer
+            )
+            .option(
+                '--string-array-indexes-type <list> (comma separated, without whitespaces)',
+                'Encodes each string in strings array using base64 or rc4 (this option can slow down your code speed). ' +
+                `Values: ${CLIUtils.stringifyOptionAvailableValues(StringArrayIndexesType)}. ` +
+                `Default: ${StringArrayIndexesType.HexadecimalNumber}`,
+                ArraySanitizer
+            )
+            .option(
+                '--string-array-index-shift <boolean>',
+                'Enables additional index shift for all string array calls',
+                BooleanSanitizer
+            )
+            .option(
+                '--string-array-rotate <boolean>', 'Enable rotation of string array values during obfuscation',
+                BooleanSanitizer
+            )
+            .option(
+                '--string-array-shuffle <boolean>', 'Randomly shuffles string array items',
+                BooleanSanitizer
+            )
+            .option(
+                '--string-array-wrappers-count <number>',
+                'Sets the count of wrappers for the string array inside each root or function scope',
+                parseInt
+            )
+            .option(
+                '--string-array-wrappers-chained-calls <boolean>',
+                'Enables the chained calls between string array wrappers',
+                BooleanSanitizer
+            )
+            .option(
+                '--string-array-wrappers-parameters-max-count <number>',
+                'Allows to control the maximum number of string array wrappers parameters',
+                parseInt
+            )
+            .option(
+                '--string-array-wrappers-type <string>',
+                'Allows to select a type of the wrappers that are appending by the `--string-array-wrappers-count` option. ' +
+                `Values: ${CLIUtils.stringifyOptionAvailableValues(StringArrayWrappersType)}. ` +
+                `Default: ${StringArrayWrappersType.Variable}`
             )
             .option(
                 '--string-array-threshold <number>',
@@ -331,9 +432,8 @@ export class JavaScriptObfuscatorCLI implements IInitializable {
             .option(
                 '--target <string>',
                 'Allows to set target environment for obfuscated code. ' +
-                'Values: browser, browser-no-eval, node. ' +
-                'Default: browser',
-                ObfuscationTargetSanitizer
+                `Values: ${CLIUtils.stringifyOptionAvailableValues(ObfuscationTarget)}. ` +
+                `Default: ${ObfuscationTarget.Browser}`
             )
             .option(
                 '--transform-object-keys <boolean>',
@@ -359,55 +459,106 @@ export class JavaScriptObfuscatorCLI implements IInitializable {
     }
 
     /**
-     * @param {TSourceCodeData} sourceCodeData
+     * @param {IFileData[]} sourceCodeData
      */
-    private processSourceCodeData (sourceCodeData: TSourceCodeData): void {
-        const outputPath: string = this.inputCLIOptions.output
-            ? path.normalize(this.inputCLIOptions.output)
-            : '';
+    private processSourceCodeData (sourceCodeData: IFileData[]): void {
+        sourceCodeData.forEach(({ filePath, content }: IFileData, index: number) => {
+            const outputCodePath: string = this.obfuscatedCodeFileUtils.getOutputCodePath(filePath);
 
-        if (!Array.isArray(sourceCodeData)) {
-            const outputCodePath: string = outputPath || CLIUtils.getOutputCodePath(this.inputPath);
+            try {
+                Logger.log(
+                    Logger.colorInfo,
+                    LoggingPrefix.CLI,
+                    `Obfuscating file: ${filePath}...`
+                );
 
-            this.processSourceCode(sourceCodeData, outputCodePath, null);
+                this.processSourceCode(content, filePath, outputCodePath, index);
+            } catch (error) {
+                Logger.log(
+                    Logger.colorInfo,
+                    LoggingPrefix.CLI,
+                    `Error in file: ${filePath}...`
+                );
+
+                throw error;
+            }
+        });
+    }
+
+    /**
+     * @param {string} sourceCode
+     * @param {string} inputCodePath
+     * @param {string} outputCodePath
+     * @param {number | null} sourceCodeIndex
+     */
+    private processSourceCode (
+        sourceCode: string,
+        inputCodePath: string,
+        outputCodePath: string,
+        sourceCodeIndex: number | null
+    ): void {
+        const options: TInputOptions = {
+            ...this.inputCLIOptions,
+            identifierNamesCache: this.identifierNamesCacheFileUtils.readFile(),
+            inputFileName: path.basename(inputCodePath),
+            ...sourceCodeIndex !== null && {
+                identifiersPrefix: Utils.getIdentifiersPrefixForMultipleSources(
+                    this.inputCLIOptions.identifiersPrefix,
+                    sourceCodeIndex
+                )
+            }
+        };
+
+        if (options.sourceMap) {
+            this.processSourceCodeWithSourceMap(sourceCode, outputCodePath, options);
         } else {
-            sourceCodeData.forEach(({ filePath, content }: IFileData, index: number) => {
-                const outputCodePath: string = outputPath
-                    ? path.join(outputPath, filePath)
-                    : CLIUtils.getOutputCodePath(filePath);
-
-                this.processSourceCode(content, outputCodePath, index);
-            });
+            this.processSourceCodeWithoutSourceMap(sourceCode, outputCodePath, options);
         }
     }
 
     /**
      * @param {string} sourceCode
      * @param {string} outputCodePath
-     * @param {number | null} sourceCodeIndex
+     * @param {TInputOptions} options
      */
-    private processSourceCode (
+    private processSourceCodeWithoutSourceMap (
         sourceCode: string,
         outputCodePath: string,
-        sourceCodeIndex: number | null
+        options: TInputOptions
     ): void {
-        let options: TInputOptions = this.buildOptions();
+        const obfuscationResult: IObfuscationResult = JavaScriptObfuscator.obfuscate(sourceCode, options);
 
-        if (sourceCodeIndex !== null) {
-            const baseIdentifiersPrefix: string = this.inputCLIOptions.identifiersPrefix
-                || JavaScriptObfuscatorCLI.baseIdentifiersPrefix;
-            const identifiersPrefix: string = `${baseIdentifiersPrefix}${sourceCodeIndex}`;
+        this.obfuscatedCodeFileUtils.writeFile(outputCodePath, obfuscationResult.getObfuscatedCode());
+        this.identifierNamesCacheFileUtils.writeFile(obfuscationResult.getIdentifierNamesCache());
+    }
 
-            options = {
-                ...options,
-                identifiersPrefix
-            };
-        }
+    /**
+     * @param {string} sourceCode
+     * @param {string} outputCodePath
+     * @param {TInputOptions} options
+     */
+    private processSourceCodeWithSourceMap (
+        sourceCode: string,
+        outputCodePath: string,
+        options: TInputOptions
+    ): void {
+        const outputSourceMapPath: string = this.obfuscatedCodeFileUtils.getOutputSourceMapPath(
+            outputCodePath,
+            options.sourceMapFileName ?? ''
+        );
 
-        if (options.sourceMap) {
-            JavaScriptObfuscatorCLI.processSourceCodeWithSourceMap(sourceCode, outputCodePath, options);
-        } else {
-            JavaScriptObfuscatorCLI.processSourceCodeWithoutSourceMap(sourceCode, outputCodePath, options);
+        options = {
+            ...options,
+            sourceMapFileName: path.basename(outputSourceMapPath)
+        };
+
+        const obfuscationResult: IObfuscationResult = JavaScriptObfuscator.obfuscate(sourceCode, options);
+
+        this.obfuscatedCodeFileUtils.writeFile(outputCodePath, obfuscationResult.getObfuscatedCode());
+        this.identifierNamesCacheFileUtils.writeFile(obfuscationResult.getIdentifierNamesCache());
+
+        if (options.sourceMapMode === SourceMapMode.Separate && obfuscationResult.getSourceMap()) {
+            this.obfuscatedCodeFileUtils.writeFile(outputSourceMapPath, obfuscationResult.getSourceMap());
         }
     }
 }

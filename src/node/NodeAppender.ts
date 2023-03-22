@@ -3,7 +3,7 @@ import * as ESTree from 'estree';
 import { TNodeWithStatements } from '../types/node/TNodeWithStatements';
 import { TStatement } from '../types/node/TStatement';
 
-import { IStackTraceData } from '../interfaces/analyzers/stack-trace-analyzer/IStackTraceData';
+import { ICallsGraphData } from '../interfaces/analyzers/calls-graph-analyzer/ICallsGraphData';
 
 import { NodeGuards } from './NodeGuards';
 
@@ -15,10 +15,9 @@ export class NodeAppender {
     public static append (nodeWithStatements: TNodeWithStatements, statements: TStatement[]): void {
         statements = NodeAppender.parentizeScopeStatementsBeforeAppend(nodeWithStatements, statements);
 
-        NodeAppender.setScopeStatements(nodeWithStatements, [
-            ...NodeAppender.getScopeStatements(nodeWithStatements),
-            ...statements
-        ]);
+        const updatedStatements: TStatement[] = NodeAppender.getScopeStatements(nodeWithStatements).concat(statements);
+
+        NodeAppender.setScopeStatements(nodeWithStatements, updatedStatements);
     }
 
     /**
@@ -38,19 +37,19 @@ export class NodeAppender {
      *
      * Appends node into block statement of `baz` function expression
      *
-     * @param {IStackTraceData[]} stackTraceData
+     * @param {ICallsGraphData[]} callsGraphData
      * @param {TNodeWithStatements} nodeWithStatements
      * @param {TStatement[]} bodyStatements
      * @param {number} index
      */
     public static appendToOptimalBlockScope (
-        stackTraceData: IStackTraceData[],
+        callsGraphData: ICallsGraphData[],
         nodeWithStatements: TNodeWithStatements,
         bodyStatements: TStatement[],
         index: number = 0
     ): void {
-        const targetBlockScope: TNodeWithStatements = stackTraceData.length
-            ? NodeAppender.getOptimalBlockScope(stackTraceData, index)
+        const targetBlockScope: TNodeWithStatements = callsGraphData.length
+            ? NodeAppender.getOptimalBlockScope(callsGraphData, index)
             : nodeWithStatements;
 
         NodeAppender.prepend(targetBlockScope, bodyStatements);
@@ -59,27 +58,56 @@ export class NodeAppender {
     /**
      * Returns deepest block scope node at given deep.
      *
-     * @param {IStackTraceData[]} stackTraceData
+     * @param {ICallsGraphData[]} callsGraphData
      * @param {number} index
      * @param {number} deep
      * @returns {BlockStatement}
      */
     public static getOptimalBlockScope (
-        stackTraceData: IStackTraceData[],
+        callsGraphData: ICallsGraphData[],
         index: number,
         deep: number = Infinity
     ): ESTree.BlockStatement {
-        const firstCall: IStackTraceData = stackTraceData[index];
+        const firstCall: ICallsGraphData = callsGraphData[index];
 
         if (deep <= 0) {
             throw new Error('Invalid `deep` argument value. Value should be bigger then 0.');
         }
 
-        if (deep > 1 && firstCall.stackTrace.length) {
-            return NodeAppender.getOptimalBlockScope(firstCall.stackTrace, 0, --deep);
+        if (deep > 1 && firstCall.callsGraph.length) {
+            return NodeAppender.getOptimalBlockScope(firstCall.callsGraph, 0, --deep);
         } else {
             return firstCall.callee;
         }
+    }
+
+    /**
+     * @param {TNodeWithStatements} nodeWithStatements
+     * @returns {TStatement[]}
+     */
+    public static getScopeStatements (nodeWithStatements: TNodeWithStatements): TStatement[] {
+        if (NodeGuards.isSwitchCaseNode(nodeWithStatements)) {
+            return nodeWithStatements.consequent;
+        }
+
+        return nodeWithStatements.body;
+    }
+
+    /**
+     * @param {TNodeWithStatements} nodeWithStatements
+     * @param {TStatement[]} statements
+     * @param {Node} target
+     */
+    public static insertBefore (
+        nodeWithStatements: TNodeWithStatements,
+        statements: TStatement[],
+        target: ESTree.Statement
+    ): void {
+        const indexInScopeStatement: number = NodeAppender
+            .getScopeStatements(nodeWithStatements)
+            .indexOf(target);
+
+        NodeAppender.insertAtIndex(nodeWithStatements, statements, indexInScopeStatement);
     }
 
     /**
@@ -125,22 +153,27 @@ export class NodeAppender {
     public static prepend (nodeWithStatements: TNodeWithStatements, statements: TStatement[]): void {
         statements = NodeAppender.parentizeScopeStatementsBeforeAppend(nodeWithStatements, statements);
 
-        NodeAppender.setScopeStatements(nodeWithStatements, [
-            ...statements,
-            ...NodeAppender.getScopeStatements(nodeWithStatements),
-        ]);
+        const updatedStatements: TStatement[] = statements.concat(NodeAppender.getScopeStatements(nodeWithStatements));
+
+        NodeAppender.setScopeStatements(nodeWithStatements, updatedStatements);
     }
 
     /**
      * @param {TNodeWithStatements} nodeWithStatements
-     * @returns {TStatement[]}
+     * @param {Statement} statement
      */
-    private static getScopeStatements (nodeWithStatements: TNodeWithStatements): TStatement[] {
-        if (NodeGuards.isSwitchCaseNode(nodeWithStatements)) {
-            return nodeWithStatements.consequent;
+    public static remove (nodeWithStatements: TNodeWithStatements, statement: ESTree.Statement): void {
+        const scopeStatements: TStatement[] = NodeAppender.getScopeStatements(nodeWithStatements);
+        const indexInScopeStatement: number = scopeStatements.indexOf(statement);
+
+        if (indexInScopeStatement === -1) {
+            return;
         }
 
-        return nodeWithStatements.body;
+        const updatedStatements: TStatement[] = [...scopeStatements];
+        updatedStatements.splice(indexInScopeStatement, 1);
+
+        NodeAppender.setScopeStatements(nodeWithStatements, updatedStatements);
     }
 
     /**

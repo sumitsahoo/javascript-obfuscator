@@ -14,7 +14,7 @@ export class ArrayUtils implements IArrayUtils {
     /**
      * @param {IRandomGenerator} randomGenerator
      */
-    constructor (
+    public constructor (
         @inject(ServiceIdentifiers.IRandomGenerator) randomGenerator: IRandomGenerator
     ) {
         this.randomGenerator = randomGenerator;
@@ -35,13 +35,78 @@ export class ArrayUtils implements IArrayUtils {
     }
 
     /**
+     * @param {number} length
+     * @param {(index: number) => TValue} valueFunction
+     * @returns {TValue[]}
+     */
+    public fillWithRange <TValue> (length: number, valueFunction: (index: number) => TValue): TValue[] {
+        const range: TValue[] = [];
+
+        for (let i: number = 0; i < length; i++) {
+            range.push(valueFunction(i));
+        }
+
+        return range;
+    }
+
+    /**
+     * @param {T[]} array
+     * @returns {T | null}
+     */
+    public findMostOccurringElement <T extends string | number> (array: T[]): T | null {
+        const arrayLength: number = array.length;
+
+        if (!arrayLength) {
+            return null;
+        }
+
+        const elementsMap: Partial<{[key in T]: number}> = {};
+
+        let mostOccurringElement: T = array[0];
+        let mostOccurringElementCount: number = 1;
+
+        for (const element of array) {
+            const currentElementCount: number = elementsMap[element] ?? 0;
+            const updatedElementCount: number = currentElementCount + 1;
+
+            if (updatedElementCount > mostOccurringElementCount) {
+                mostOccurringElement = element;
+                mostOccurringElementCount = updatedElementCount;
+            }
+
+            elementsMap[element] = updatedElementCount;
+        }
+
+        return mostOccurringElement;
+    }
+
+    /**
+     * @param {T[]} array
+     * @returns {T | undefined}
+     */
+    public getLastElement <T> (array: T[]): T | undefined {
+        return this.getLastElementByIndex(array, 0);
+    }
+
+    /**
+     * @param {T[]} array
+     * @param {number} index
+     * @returns {T | undefined}
+     */
+    public getLastElementByIndex <T> (array: T[], index: number): T | undefined {
+        const arrayLength: number = array.length;
+
+        return array[arrayLength - 1 - index] ?? undefined;
+    }
+
+    /**
      * @param {T[]} array
      * @param {number} times
      * @returns {T[]}
      */
     public rotate <T> (array: T[], times: number): T[] {
         if (!array.length) {
-            throw new ReferenceError(`Cannot rotate empty array.`);
+            throw new ReferenceError('Cannot rotate empty array.');
         }
 
         if (times <= 0) {

@@ -1,6 +1,5 @@
-/* tslint:disable:max-file-line-count */
-
-import * as escodegen from 'escodegen-wallaby';
+/* eslint-disable max-lines */
+import * as escodegen from '@javascript-obfuscator/escodegen';
 import * as ESTree from 'estree';
 
 import { TStatement } from '../types/node/TStatement';
@@ -64,7 +63,7 @@ export class NodeFactory {
     public static binaryExpressionNode (
         operator: ESTree.BinaryOperator,
         left: ESTree.Expression,
-        right: ESTree.Expression,
+        right: ESTree.Expression
     ): ESTree.BinaryExpression {
         return {
             type: NodeType.BinaryExpression,
@@ -102,16 +101,39 @@ export class NodeFactory {
     /**
      * @param {Expression} callee
      * @param {(Expression | SpreadElement)[]} args
+     * @param {boolean} optional
      * @returns {CallExpression}
      */
     public static callExpressionNode (
         callee: ESTree.Expression,
-        args: (ESTree.Expression | ESTree.SpreadElement)[] = []
+        args: (ESTree.Expression | ESTree.SpreadElement)[] = [],
+        optional: boolean = false,
     ): ESTree.CallExpression {
         return {
             type: NodeType.CallExpression,
             callee,
+            optional,
             arguments: args,
+            metadata: { ignoredNode: false }
+        };
+    }
+
+    /**
+     * @param {ESTree.Expression} test
+     * @param {ESTree.Expression} consequent
+     * @param {ESTree.Expression} alternate
+     * @returns {ESTree.ConditionalExpression}
+     */
+    public static conditionalExpressionNode (
+        test: ESTree.Expression,
+        consequent: ESTree.Expression,
+        alternate: ESTree.Expression
+    ): ESTree.ConditionalExpression {
+        return {
+            type: NodeType.ConditionalExpression,
+            test,
+            consequent,
+            alternate,
             metadata: { ignoredNode: false }
         };
     }
@@ -129,6 +151,71 @@ export class NodeFactory {
     }
 
     /**
+     * @param {Literal} expression
+     * @param {string} directive
+     * @returns {Directive}
+     */
+    public static directiveNode (
+        expression: ESTree.Literal,
+        directive: string
+    ): ESTree.Directive {
+        return {
+            type: NodeType.ExpressionStatement,
+            expression,
+            directive,
+            metadata: { ignoredNode: false }
+        };
+    }
+
+    /**
+     * @param {Statement} body
+     * @param {Expression} test
+     * @returns {DoWhileStatement}
+     */
+    public static doWhileStatementNode (body: ESTree.Statement, test: ESTree.Expression): ESTree.DoWhileStatement {
+        return {
+            type: NodeType.DoWhileStatement,
+            body,
+            test,
+            metadata: { ignoredNode: false }
+        };
+    }
+
+    /**
+     * @param {Literal} source
+     * @param {Identifier | null} exported
+     * @returns {ExportAllDeclaration}
+     */
+    public static exportAllDeclarationNode (
+        source: ESTree.Literal,
+        exported: ESTree.Identifier | null
+    ): ESTree.ExportAllDeclaration {
+        return {
+            type: NodeType.ExportAllDeclaration,
+            exported,
+            source,
+            metadata: { ignoredNode: false }
+        };
+    }
+
+    /**
+     * @param {ExportSpecifier[]} specifiers
+     * @param {Literal} source
+     * @returns {ExportNamedDeclaration}
+     */
+    public static exportNamedDeclarationNode (
+        specifiers: ESTree.ExportSpecifier[],
+        source: ESTree.Literal
+    ): ESTree.ExportNamedDeclaration {
+        return {
+            type: NodeType.ExportNamedDeclaration,
+            specifiers,
+            source,
+            metadata: { ignoredNode: false }
+        };
+    }
+
+    /**
      * @param {Expression} expression
      * @returns {ExpressionStatement}
      */
@@ -136,6 +223,72 @@ export class NodeFactory {
         return {
             type: NodeType.ExpressionStatement,
             expression,
+            metadata: { ignoredNode: false }
+        };
+    }
+
+    /**
+     * @param {VariableDeclaration | Expression | null} init
+     * @param {Expression | null} test
+     * @param {Expression | null} update
+     * @param {Statement} body
+     * @returns {ForStatement}
+     */
+    public static forStatementNode (
+        init: ESTree.VariableDeclaration | ESTree.Expression | null,
+        test: ESTree.Expression | null,
+        update: ESTree.Expression | null,
+        body: ESTree.Statement
+    ): ESTree.ForStatement {
+        return {
+            type: NodeType.ForStatement,
+            init,
+            test,
+            update,
+            body,
+            metadata: { ignoredNode: false }
+        };
+    }
+
+    /**
+     * @param {VariableDeclaration | Pattern} left
+     * @param {Expression} right
+     * @param {Statement} body
+     * @returns {ForInStatement}
+     */
+    public static forInStatementNode (
+        left: ESTree.VariableDeclaration | ESTree.Pattern,
+        right: ESTree.Expression,
+        body: ESTree.Statement
+    ): ESTree.ForInStatement {
+        return {
+            type: NodeType.ForInStatement,
+            left,
+            right,
+            body,
+            metadata: { ignoredNode: false }
+        };
+    }
+
+    /**
+     * @param {boolean} await
+     * @param {VariableDeclaration | Pattern} left
+     * @param {Expression} right
+     * @param {Statement} body
+     * @returns {ForOfStatement}
+     */
+    public static forOfStatementNode (
+        await: boolean,
+        left: ESTree.VariableDeclaration | ESTree.Pattern,
+        right: ESTree.Expression,
+        body: ESTree.Statement
+    ): ESTree.ForOfStatement {
+        return {
+            type: NodeType.ForOfStatement,
+            await,
+            left,
+            right,
+            body,
             metadata: { ignoredNode: false }
         };
     }
@@ -167,7 +320,7 @@ export class NodeFactory {
      * @returns {FunctionExpression}
      */
     public static functionExpressionNode (
-        params: ESTree.Identifier[],
+        params: ESTree.Pattern[],
         body: ESTree.BlockStatement
     ): ESTree.FunctionExpression {
         return {
@@ -180,15 +333,15 @@ export class NodeFactory {
     }
 
     /**
-     * @param {Expression} test
-     * @param {BlockStatement} consequent
-     * @param {BlockStatement} alternate
-     * @returns {IfStatement}
+     * @param {ESTree.Expression} test
+     * @param {ESTree.Statement} consequent
+     * @param {ESTree.Statement | null} alternate
+     * @returns {ESTree.IfStatement}
      */
     public static ifStatementNode (
         test: ESTree.Expression,
-        consequent: ESTree.BlockStatement,
-        alternate?: ESTree.BlockStatement
+        consequent: ESTree.Statement,
+        alternate?: ESTree.Statement | null
     ): ESTree.IfStatement {
         return {
             type: NodeType.IfStatement,
@@ -212,6 +365,40 @@ export class NodeFactory {
     }
 
     /**
+     * @param {(ImportSpecifier | ImportDefaultSpecifier | ImportNamespaceSpecifier)[]} specifiers
+     * @param {Literal} source
+     * @returns {ImportDeclaration}
+     */
+    public static importDeclarationNode (
+        specifiers: (ESTree.ImportSpecifier | ESTree.ImportDefaultSpecifier | ESTree.ImportNamespaceSpecifier)[],
+        source: ESTree.Literal
+    ): ESTree.ImportDeclaration {
+        return {
+            type: NodeType.ImportDeclaration,
+            specifiers,
+            source,
+            metadata: { ignoredNode: false }
+        };
+    }
+
+    /**
+     * @param {Identifier} label
+     * @param {Statement} body
+     * @returns {LabeledStatement}
+     */
+    public static labeledStatementNode (
+        label: ESTree.Identifier,
+        body: ESTree.Statement
+    ): ESTree.LabeledStatement {
+        return {
+            type: NodeType.LabeledStatement,
+            label,
+            body,
+            metadata: { ignoredNode: false }
+        };
+    }
+
+    /**
      * @param {boolean | number | string} value
      * @param {string} raw
      * @returns {Literal}
@@ -223,6 +410,7 @@ export class NodeFactory {
             type: NodeType.Literal,
             value,
             raw,
+            // eslint-disable-next-line @typescript-eslint/naming-convention
             'x-verbatim-property': {
                 content: raw,
                 precedence: escodegen.Precedence.Primary
@@ -255,51 +443,30 @@ export class NodeFactory {
      * @param {Expression | Super} object
      * @param {Expression} property
      * @param {boolean} computed
+     * @param {boolean} optional
      * @returns {MemberExpression}
      */
     public static memberExpressionNode (
         object: ESTree.Expression | ESTree.Super,
         property: ESTree.Expression,
-        computed: boolean = false
+        computed: boolean = false,
+        optional: boolean = false,
     ): ESTree.MemberExpression {
         return {
             type: NodeType.MemberExpression,
             computed,
             object,
+            optional,
             property,
             metadata: { ignoredNode: false }
         };
     }
 
     /**
-     * @param {Expression} key
-     * @param {FunctionExpression} value
-     * @param {"constructor" | "method" | "get" | "set"} kind
-     * @param {boolean} computed
-     * @returns {MethodDefinition}
+     * @param {(ESTree.Property | ESTree.SpreadElement)[]} properties
+     * @returns {ESTree.ObjectExpression}
      */
-    public static methodDefinitionNode (
-        key: ESTree.Expression,
-        value: ESTree.FunctionExpression,
-        kind: 'constructor' | 'method' | 'get' | 'set',
-        computed: boolean,
-    ): ESTree.MethodDefinition {
-        return {
-            type: NodeType.MethodDefinition,
-            key,
-            value,
-            kind,
-            computed,
-            static: false,
-            metadata: { ignoredNode: false }
-        };
-    }
-
-    /**
-     * @param {Property[]} properties
-     * @returns {ObjectExpression}
-     */
-    public static objectExpressionNode (properties: ESTree.Property[]): ESTree.ObjectExpression {
+    public static objectExpressionNode (properties: (ESTree.Property | ESTree.SpreadElement)[]): ESTree.ObjectExpression {
         return {
             type: NodeType.ObjectExpression,
             properties,
@@ -331,6 +498,18 @@ export class NodeFactory {
     }
 
     /**
+     * @param {Pattern} argument
+     * @returns {SpreadElement}
+     */
+    public static restElementNode (argument: ESTree.Pattern): ESTree.RestElement {
+        return {
+            type: NodeType.RestElement,
+            argument,
+            metadata: { ignoredNode: false }
+        };
+    }
+
+    /**
      * @param {Expression} argument
      * @returns {ReturnStatement}
      */
@@ -338,6 +517,42 @@ export class NodeFactory {
         return {
             type: NodeType.ReturnStatement,
             argument,
+            metadata: { ignoredNode: false }
+        };
+    }
+
+    /**
+     * @param {ESTree.Expression[]} expressions
+     * @returns {ESTree.SequenceExpression}
+     */
+    public static sequenceExpressionNode (expressions: ESTree.Expression[]): ESTree.SequenceExpression {
+        return {
+            type: NodeType.SequenceExpression,
+            expressions,
+            metadata: { ignoredNode: false }
+        };
+    }
+
+    /**
+     * @param {Expression} argument
+     * @returns {SpreadElement}
+     */
+    public static spreadElementNode (argument: ESTree.Expression): ESTree.SpreadElement {
+        return {
+            type: NodeType.SpreadElement,
+            argument,
+            metadata: { ignoredNode: false }
+        };
+    }
+
+    /**
+     * @param {Statement[]} body
+     * @returns {StaticBlock}
+     */
+    public static staticBlockNode (body: ESTree.Statement[] = []): ESTree.StaticBlock {
+        return {
+            type: NodeType.StaticBlock,
+            body,
             metadata: { ignoredNode: false }
         };
     }

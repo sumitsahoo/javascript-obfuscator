@@ -1,7 +1,11 @@
 .awcache
 .github
 .idea
-coverage
-images
-test/fixtures/compile-performance.js
-test-tmp
+.nyc_output
+/coverage/
+/examples/
+/images/
+/webpack/
+/src/
+/test/
+/test*.js

@@ -10,16 +10,6 @@ import { initializable } from '../decorators/Initializable';
 @injectable()
 export abstract class ArrayStorage <V> implements IArrayStorage <V> {
     /**
-     * @type {IRandomGenerator}
-     */
-    protected readonly randomGenerator: IRandomGenerator;
-
-    /**
-     * @type {IOptions}
-     */
-    protected readonly options: IOptions;
-
-    /**
      * @type {V[]}
      */
     @initializable()
@@ -32,6 +22,16 @@ export abstract class ArrayStorage <V> implements IArrayStorage <V> {
     protected storageId!: string;
 
     /**
+     * @type {IRandomGenerator}
+     */
+    protected readonly randomGenerator: IRandomGenerator;
+
+    /**
+     * @type {IOptions}
+     */
+    protected readonly options: IOptions;
+
+    /**
      * @type {number}
      */
     private storageLength: number = 0;
@@ -40,7 +40,7 @@ export abstract class ArrayStorage <V> implements IArrayStorage <V> {
      * @param {IRandomGenerator} randomGenerator
      * @param {IOptions} options
      */
-    constructor (
+    public constructor (
         @inject(ServiceIdentifiers.IRandomGenerator) randomGenerator: IRandomGenerator,
         @inject(ServiceIdentifiers.IOptions) options: IOptions
     ) {
@@ -56,10 +56,32 @@ export abstract class ArrayStorage <V> implements IArrayStorage <V> {
 
     /**
      * @param {number} key
+     * @returns {V | undefined}
+     */
+    public delete (key: number): V | undefined {
+        const deletedElement: V | undefined = this.storage.splice(key, 1)[0] ?? undefined;
+
+        if (deletedElement) {
+            this.storageLength--;
+        }
+
+        return deletedElement;
+    }
+
+    /**
+     * @param {number} key
+     * @returns {V | undefined}
+     */
+    public get (key: number): V | undefined {
+        return this.storage[key];
+    }
+
+    /**
+     * @param {number} key
      * @returns {V}
      */
-    public get (key: number): V {
-        const value: V | undefined = this.storage[key];
+    public getOrThrow (key: number): V {
+        const value: V | undefined = this.get(key);
 
         if (!value) {
             throw new Error(`No value found in array storage with key \`${key}\``);

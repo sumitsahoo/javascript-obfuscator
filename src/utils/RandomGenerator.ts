@@ -11,17 +11,15 @@ import { ISourceCode } from '../interfaces/source-code/ISourceCode';
 
 import { initializable } from '../decorators/Initializable';
 
+import { alphabetString } from '../constants/AlphabetString';
+import { alphabetStringUppercase } from '../constants/AlphabetStringUppercase';
+
 @injectable()
 export class RandomGenerator implements IRandomGenerator, IInitializable {
     /**
      * @type {string}
      */
-    public static readonly randomGeneratorPool: string = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-
-    /**
-     * @type {IOptions}
-     */
-    private readonly options: IOptions;
+    public static readonly randomGeneratorPool: string = `${alphabetString}${alphabetStringUppercase}`;
 
     /**
      * @type {Chance.Chance}
@@ -30,10 +28,9 @@ export class RandomGenerator implements IRandomGenerator, IInitializable {
     private randomGenerator!: Chance.Chance;
 
     /**
-     * @type {number}
+     * @type {IOptions}
      */
-    @initializable()
-    private seed!: number;
+    private readonly options: IOptions;
 
     /**
      * @type {ISourceCode}
@@ -44,7 +41,7 @@ export class RandomGenerator implements IRandomGenerator, IInitializable {
      * @param {ISourceCode} sourceCode
      * @param {IOptions} options
      */
-    constructor (
+    public constructor (
         @inject(ServiceIdentifiers.ISourceCode) sourceCode: ISourceCode,
         @inject(ServiceIdentifiers.IOptions) options: IOptions
     ) {
@@ -54,24 +51,7 @@ export class RandomGenerator implements IRandomGenerator, IInitializable {
 
     @postConstruct()
     public initialize (): void {
-        const getRandomInteger: (min: number, max: number) => number = (min: number, max: number) => {
-            return Math.floor(Math.random() * (max - min + 1) + min);
-        };
-
-        /**
-         * We need to add numbers from md5 hash of source code to input seed to prevent same String Array name
-         * for different bundles with same seed
-         *
-         * @returns {number}
-         */
-        const getSeed: () => number = (): number => {
-            const md5Hash: string = md5(this.sourceCode.getSourceCode());
-
-            return this.seed + Number(md5Hash.replace(/\D/g, ''));
-        };
-
-        this.seed = this.options.seed !== 0 ? this.options.seed : getRandomInteger(0, 999_999_999);
-        this.randomGenerator = new Chance(getSeed());
+        this.randomGenerator = new Chance(this.getRawSeed());
     }
 
     /**
@@ -101,6 +81,26 @@ export class RandomGenerator implements IRandomGenerator, IInitializable {
     }
 
     /**
+     * @param {number} min
+     * @param {number} max
+     * @param {number[]} valuesToExclude
+     * @returns {number}
+     */
+    public getRandomIntegerExcluding (min: number, max: number, valuesToExclude: number[]): number {
+        const valuesToPickArray: number[] = [];
+
+        for (let value: number = min; value <= max; value++) {
+            if (valuesToExclude.includes(value)) {
+                continue;
+            }
+
+            valuesToPickArray.push(value);
+        }
+
+        return this.randomGenerator.pickone(valuesToPickArray);
+    }
+
+    /**
      * @param {number} length
      * @param {string} pool
      * @returns {string}
@@ -110,9 +110,28 @@ export class RandomGenerator implements IRandomGenerator, IInitializable {
     }
 
     /**
+     * @returns {string}
+     */
+    public getInputSeed (): string {
+        return this.options.seed.toString();
+    }
+
+    /**
+     * We need to add numbers from md5 hash of source code to input seed to prevent same String Array name
+     * for different bundles with same seed
+     *
      * @returns {number}
      */
-    public getSeed (): number {
-        return this.seed;
+    public getRawSeed (): string {
+        const inputSeed: string = this.getInputSeed();
+        const inputSeedParts: string[] = `${inputSeed}`.split('|');
+
+        if (inputSeedParts.length > 1) {
+            return inputSeed;
+        }
+
+        const sourceCodeMD5Hash: string = md5(this.sourceCode.getSourceCode());
+
+        return `${inputSeed}|${sourceCodeMD5Hash}`;
     }
 }

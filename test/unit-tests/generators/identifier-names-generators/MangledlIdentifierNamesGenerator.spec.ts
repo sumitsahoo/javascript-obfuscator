@@ -10,9 +10,10 @@ import { IInversifyContainerFacade } from '../../../../src/interfaces/container/
 import { IdentifierNamesGenerator } from '../../../../src/enums/generators/identifier-names-generators/IdentifierNamesGenerator';
 
 import { InversifyContainerFacade } from '../../../../src/container/InversifyContainerFacade';
+import { MangledIdentifierNamesGenerator } from '../../../../src/generators/identifier-names-generators/MangledIdentifierNamesGenerator';
 
 describe('MangledIdentifierNamesGenerator', () => {
-    describe('generate', () => {
+    describe('generateNext', () => {
         let identifierNamesGenerator: IIdentifierNamesGenerator,
             mangledIdentifierName: string;
 
@@ -30,7 +31,7 @@ describe('MangledIdentifierNamesGenerator', () => {
             const expectedMangledIdentifierName: string = 'a';
 
             beforeEach(() => {
-                mangledIdentifierName = identifierNamesGenerator.generate();
+                mangledIdentifierName = identifierNamesGenerator.generateNext();
             });
 
             it('should return mangled name', () => {
@@ -44,7 +45,7 @@ describe('MangledIdentifierNamesGenerator', () => {
 
             beforeEach(() => {
                 for (let i: number = 0; i <= expectedMangledIdentifierPosition; i++) {
-                    mangledIdentifierName = identifierNamesGenerator.generate();
+                    mangledIdentifierName = identifierNamesGenerator.generateNext();
                 }
             });
 
@@ -59,7 +60,7 @@ describe('MangledIdentifierNamesGenerator', () => {
 
             beforeEach(() => {
                 for (let i: number = 0; i <= expectedMangledIdentifierPosition; i++) {
-                    mangledIdentifierName = identifierNamesGenerator.generate();
+                    mangledIdentifierName = identifierNamesGenerator.generateNext();
                 }
             });
 
@@ -74,7 +75,7 @@ describe('MangledIdentifierNamesGenerator', () => {
 
             beforeEach(() => {
                 for (let i: number = 0; i <= expectedMangledIdentifierPosition; i++) {
-                    mangledIdentifierName = identifierNamesGenerator.generate();
+                    mangledIdentifierName = identifierNamesGenerator.generateNext();
                 }
             });
 
@@ -89,7 +90,7 @@ describe('MangledIdentifierNamesGenerator', () => {
 
             beforeEach(() => {
                 for (let i: number = 0; i <= expectedMangledIdentifierPosition; i++) {
-                    mangledIdentifierName = identifierNamesGenerator.generate();
+                    mangledIdentifierName = identifierNamesGenerator.generateNext();
                 }
             });
 
@@ -109,7 +110,7 @@ describe('MangledIdentifierNamesGenerator', () => {
 
             beforeEach(() => {
                 for (let i: number = 0; i <= expectedMangledIdentifierPosition2; i++) {
-                    mangledIdentifierName = identifierNamesGenerator.generate();
+                    mangledIdentifierName = identifierNamesGenerator.generateNext();
 
                     if (i === expectedMangledIdentifierPosition1) {
                         mangledIdentifierName1 = mangledIdentifierName;
@@ -129,7 +130,7 @@ describe('MangledIdentifierNamesGenerator', () => {
         });
     });
 
-    describe('generateWithPrefix (): string', () => {
+    describe('generateForGlobalScope', () => {
         let identifierNamesGenerator: IIdentifierNamesGenerator,
             mangledIdentifierName: string;
 
@@ -146,10 +147,10 @@ describe('MangledIdentifierNamesGenerator', () => {
         });
 
         describe('Variant #1: initial mangled name', () => {
-            const expectedMangledIdentifierName: string = 'foo_a';
+            const expectedMangledIdentifierName: string = 'fooa';
 
             beforeEach(() => {
-                mangledIdentifierName = identifierNamesGenerator.generateWithPrefix();
+                mangledIdentifierName = identifierNamesGenerator.generateForGlobalScope();
             });
 
             it('should return mangled name with prefix', () => {
@@ -158,10 +159,10 @@ describe('MangledIdentifierNamesGenerator', () => {
         });
 
         describe('Variant #2: second mangled name', () => {
-            const expectedMangledIdentifierName: string = 'foo_b';
+            const expectedMangledIdentifierName: string = 'foob';
 
             beforeEach(() => {
-                mangledIdentifierName = identifierNamesGenerator.generateWithPrefix();
+                mangledIdentifierName = identifierNamesGenerator.generateForGlobalScope();
             });
 
             it('should return mangled name with prefix', () => {
@@ -170,7 +171,86 @@ describe('MangledIdentifierNamesGenerator', () => {
         });
     });
 
-    describe('isValidIdentifierName (identifierName: string): boolean', () => {
+    describe('generateForLabel', () => {
+        const label1: string = 'label1';
+        const label2: string = 'label2';
+
+        const mangledNames1: string[] = [];
+        const mangledNames2: string[] = [];
+
+        const expectedMangledNames1: string[] = ['a', 'b', 'c']
+        const expectedMangledNames2: string[] = ['a', 'b']
+
+        let identifierNamesGenerator: IIdentifierNamesGenerator;
+
+        before(() => {
+            const inversifyContainerFacade: IInversifyContainerFacade = new InversifyContainerFacade();
+
+            inversifyContainerFacade.load('', '', {
+                identifiersPrefix: 'foo'
+            });
+            identifierNamesGenerator = inversifyContainerFacade.getNamed<IIdentifierNamesGenerator>(
+                ServiceIdentifiers.IIdentifierNamesGenerator,
+                IdentifierNamesGenerator.MangledIdentifierNamesGenerator
+            );
+
+            mangledNames1.push(identifierNamesGenerator.generateForLabel(label1));
+            mangledNames1.push(identifierNamesGenerator.generateForLabel(label1));
+            mangledNames1.push(identifierNamesGenerator.generateForLabel(label1));
+
+            mangledNames2.push(identifierNamesGenerator.generateForLabel(label2));
+            mangledNames2.push(identifierNamesGenerator.generateForLabel(label2));
+        });
+
+        it('should return valid mangled names for label 1', () => {
+            assert.deepEqual(mangledNames1, expectedMangledNames1);
+        })
+
+        it('should return valid mangled names for label 2', () => {
+            assert.deepEqual(mangledNames2, expectedMangledNames2);
+        })
+    });
+
+    describe('isIncrementedMangledName', function () {
+        this.timeout(60000);
+
+        const samplesCount: number = 1000000;
+        const inversifyContainerFacade: IInversifyContainerFacade = new InversifyContainerFacade();
+
+        inversifyContainerFacade.load('', '', {});
+        const identifierNamesGenerator: IIdentifierNamesGenerator = inversifyContainerFacade.getNamed<IIdentifierNamesGenerator>(
+            ServiceIdentifiers.IIdentifierNamesGenerator,
+            IdentifierNamesGenerator.MangledIdentifierNamesGenerator
+        );
+
+        let isSuccessComparison: boolean = true;
+        let mangledName: string = '';
+        let prevMangledName: string = '9';
+
+        for (let sample = 0; sample <= samplesCount; sample++) {
+            let resultNormal: boolean;
+            let resultReversed: boolean;
+
+            mangledName = identifierNamesGenerator.generateNext();
+            resultNormal = (<MangledIdentifierNamesGenerator>identifierNamesGenerator)
+                .isIncrementedMangledName(mangledName, prevMangledName);
+            resultReversed = (<MangledIdentifierNamesGenerator>identifierNamesGenerator)
+                .isIncrementedMangledName(prevMangledName, mangledName);
+
+            if (!resultNormal || resultReversed) {
+                isSuccessComparison = false;
+                break;
+            }
+
+            prevMangledName = mangledName;
+        }
+
+        it('should correctly compare mangled names', () => {
+            assert.isTrue(isSuccessComparison);
+        });
+    });
+
+    describe('isValidIdentifierName', () => {
         describe('Variant #1: reserved name as simple string', () => {
             const expectedFirstIdentifier: string = 'a';
             const expectedSecondIdentifier: string = 'd';
@@ -189,8 +269,8 @@ describe('MangledIdentifierNamesGenerator', () => {
                     IdentifierNamesGenerator.MangledIdentifierNamesGenerator
                 );
 
-                firstMangledIdentifierName = identifierNamesGenerator.generate();
-                secondMangledIdentifierName = identifierNamesGenerator.generate();
+                firstMangledIdentifierName = identifierNamesGenerator.generateNext();
+                secondMangledIdentifierName = identifierNamesGenerator.generateNext();
             });
 
             it('should generate first identifier', () => {
@@ -220,8 +300,8 @@ describe('MangledIdentifierNamesGenerator', () => {
                     IdentifierNamesGenerator.MangledIdentifierNamesGenerator
                 );
 
-                firstMangledIdentifierName = identifierNamesGenerator.generate();
-                secondMangledIdentifierName = identifierNamesGenerator.generate();
+                firstMangledIdentifierName = identifierNamesGenerator.generateNext();
+                secondMangledIdentifierName = identifierNamesGenerator.generateNext();
             });
 
             it('should generate first identifier', () => {
@@ -230,6 +310,33 @@ describe('MangledIdentifierNamesGenerator', () => {
 
             it('should generate second identifier', () => {
                 assert.equal(secondMangledIdentifierName, expectedSecondIdentifier);
+            });
+        });
+
+        describe('Variant #3: reserved dom property name', () => {
+            let identifierNamesGenerator: IIdentifierNamesGenerator,
+                isValidName1: boolean,
+                isValidName2: boolean,
+                isValidName3: boolean;
+
+            beforeEach(() => {
+                const inversifyContainerFacade: IInversifyContainerFacade = new InversifyContainerFacade();
+
+                inversifyContainerFacade.load('', '', {} );
+                identifierNamesGenerator = inversifyContainerFacade.getNamed<IIdentifierNamesGenerator>(
+                    ServiceIdentifiers.IIdentifierNamesGenerator,
+                    IdentifierNamesGenerator.MangledIdentifierNamesGenerator
+                );
+
+                isValidName1 = identifierNamesGenerator.isValidIdentifierName('Set');
+                isValidName2 = identifierNamesGenerator.isValidIdentifierName('Array');
+                isValidName3 = identifierNamesGenerator.isValidIdentifierName('WeakSet');
+            });
+
+            it('should generate first identifier', () => {
+                assert.isFalse(isValidName1);
+                assert.isFalse(isValidName2);
+                assert.isTrue(isValidName3);
             });
         });
     });

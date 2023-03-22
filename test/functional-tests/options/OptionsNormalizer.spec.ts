@@ -10,7 +10,7 @@ import { IInversifyContainerFacade } from '../../../src/interfaces/container/IIn
 import { IOptions } from '../../../src/interfaces/options/IOptions';
 import { IOptionsNormalizer } from '../../../src/interfaces/options/IOptionsNormalizer';
 
-import { StringArrayEncoding } from '../../../src/enums/StringArrayEncoding';
+import { StringArrayEncoding } from '../../../src/enums/node-transformers/string-array-transformers/StringArrayEncoding';
 
 import { DEFAULT_PRESET } from '../../../src/options/presets/Default';
 
@@ -30,7 +30,14 @@ function getNormalizedOptions (optionsPreset: TInputOptions): TInputOptions {
     const optionsNormalizer: IOptionsNormalizer = inversifyContainerFacade
         .get<IOptionsNormalizer>(ServiceIdentifiers.IOptionsNormalizer);
 
-    return optionsNormalizer.normalize(options);
+    return <TInputOptions>optionsNormalizer.normalize(options);
+}
+
+function getDefaultOptions(): TInputOptions {
+    return {
+        ...DEFAULT_PRESET,
+        seed: 1 // set `seed` to the fixed value, to prevent a new seed for the each case
+    };
 }
 
 describe('OptionsNormalizer', () => {
@@ -41,13 +48,13 @@ describe('OptionsNormalizer', () => {
         describe('controlFlowFlatteningThresholdRule', () => {
             before(() => {
                 optionsPreset = getNormalizedOptions({
-                    ...DEFAULT_PRESET,
+                    ...getDefaultOptions(),
                     controlFlowFlattening: true,
                     controlFlowFlatteningThreshold: 0
                 });
 
                 expectedOptionsPreset = {
-                    ...DEFAULT_PRESET,
+                    ...getDefaultOptions(),
                     controlFlowFlattening: false,
                     controlFlowFlatteningThreshold: 0
                 };
@@ -61,7 +68,7 @@ describe('OptionsNormalizer', () => {
         describe('deadCodeInjectionRule', () => {
             before(() => {
                 optionsPreset = getNormalizedOptions({
-                    ...DEFAULT_PRESET,
+                    ...getDefaultOptions(),
                     deadCodeInjection: true,
                     deadCodeInjectionThreshold: 0.4,
                     stringArray: false,
@@ -69,7 +76,7 @@ describe('OptionsNormalizer', () => {
                 });
 
                 expectedOptionsPreset = {
-                    ...DEFAULT_PRESET,
+                    ...getDefaultOptions(),
                     deadCodeInjection: true,
                     deadCodeInjectionThreshold: 0.4,
                     stringArray: true,
@@ -86,7 +93,7 @@ describe('OptionsNormalizer', () => {
             describe('`stringArrayThreshold` option is empty', () => {
                 before(() => {
                     optionsPreset = getNormalizedOptions({
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         deadCodeInjection: true,
                         deadCodeInjectionThreshold: 0.4,
                         stringArray: false,
@@ -94,7 +101,7 @@ describe('OptionsNormalizer', () => {
                     });
 
                     expectedOptionsPreset = {
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         deadCodeInjection: true,
                         deadCodeInjectionThreshold: 0.4,
                         stringArray: true,
@@ -110,7 +117,7 @@ describe('OptionsNormalizer', () => {
             describe('`stringArrayThreshold` option is not empty', () => {
                 before(() => {
                     optionsPreset = getNormalizedOptions({
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         deadCodeInjection: true,
                         deadCodeInjectionThreshold: 0.4,
                         stringArray: false,
@@ -118,7 +125,7 @@ describe('OptionsNormalizer', () => {
                     });
 
                     expectedOptionsPreset = {
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         deadCodeInjection: true,
                         deadCodeInjectionThreshold: 0.4,
                         stringArray: true,
@@ -135,13 +142,13 @@ describe('OptionsNormalizer', () => {
         describe('deadCodeInjectionThresholdRule', () => {
             before(() => {
                 optionsPreset = getNormalizedOptions({
-                    ...DEFAULT_PRESET,
+                    ...getDefaultOptions(),
                     deadCodeInjection: true,
                     deadCodeInjectionThreshold: 0
                 });
 
                 expectedOptionsPreset = {
-                    ...DEFAULT_PRESET,
+                    ...getDefaultOptions(),
                     deadCodeInjection: false,
                     deadCodeInjectionThreshold: 0
                 };
@@ -152,10 +159,56 @@ describe('OptionsNormalizer', () => {
             });
         });
 
+        describe('domainLockRedirectUrlRule', () => {
+            describe('Variant #1: `domainLock` option is set', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        domainLock: [
+                            'localhost'
+                        ],
+                        domainLockRedirectUrl: 'https://example.com'
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        domainLock: [
+                            'localhost'
+                        ],
+                        domainLockRedirectUrl: 'https://example.com'
+                    };
+                });
+
+                it('should not normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+
+            describe('Variant #2 `domainLock` option is not set', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        domainLock: [],
+                        domainLockRedirectUrl: 'https://example.com'
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        domainLock: [],
+                        domainLockRedirectUrl: 'about:blank'
+                    };
+                });
+
+                it('should normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+        });
+
         describe('domainLockRule', () => {
             before(() => {
                 optionsPreset = getNormalizedOptions({
-                    ...DEFAULT_PRESET,
+                    ...getDefaultOptions(),
                     domainLock: [
                         '//localhost:9000',
                         'https://google.ru/abc?cde=fgh'
@@ -163,7 +216,7 @@ describe('OptionsNormalizer', () => {
                 });
 
                 expectedOptionsPreset = {
-                    ...DEFAULT_PRESET,
+                    ...getDefaultOptions(),
                     domainLock: [
                         'localhost',
                         'google.ru'
@@ -180,12 +233,12 @@ describe('OptionsNormalizer', () => {
             describe('Variant #1: extension isn\'t set', () => {
                 before(() => {
                     optionsPreset = getNormalizedOptions({
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         inputFileName: 'foo'
                     });
 
                     expectedOptionsPreset = {
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         inputFileName: 'foo.js'
                     };
                 });
@@ -198,12 +251,12 @@ describe('OptionsNormalizer', () => {
             describe('Variant #2: extension is set', () => {
                 before(() => {
                     optionsPreset = getNormalizedOptions({
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         inputFileName: 'foo.js'
                     });
 
                     expectedOptionsPreset = {
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         inputFileName: 'foo.js'
                     };
                 });
@@ -216,12 +269,12 @@ describe('OptionsNormalizer', () => {
             describe('Variant #3: extension in set with `.map` postfix', () => {
                 before(() => {
                     optionsPreset = getNormalizedOptions({
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         inputFileName: 'foo.map.js'
                     });
 
                     expectedOptionsPreset = {
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         inputFileName: 'foo.map.js'
                     };
                 });
@@ -234,13 +287,31 @@ describe('OptionsNormalizer', () => {
             describe('Variant #4: no file name', () => {
                 before(() => {
                     optionsPreset = getNormalizedOptions({
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         inputFileName: ''
                     });
 
                     expectedOptionsPreset = {
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         inputFileName: ''
+                    };
+                });
+
+                it('should normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+
+            describe('Variant #5: relative path', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        inputFileName: 'baz/bar/foo.js'
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        inputFileName: 'baz/bar/foo.js'
                     };
                 });
 
@@ -250,16 +321,206 @@ describe('OptionsNormalizer', () => {
             });
         });
 
+        describe('identifierNamesCacheRule', () => {
+            describe('Variant #1: all fields are exist with values', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        identifierNamesCache: {
+                            globalIdentifiers: {
+                                foo: '_0x123456'
+                            },
+                            propertyIdentifiers: {
+                                bar: '_0x654321'
+                            }
+                        }
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        identifierNamesCache: {
+                            globalIdentifiers: {
+                                foo: '_0x123456'
+                            },
+                            propertyIdentifiers: {
+                                bar: '_0x654321'
+                            }
+                        }
+                    };
+                });
+
+                it('should not normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+
+            describe('Variant #2: some fields are exist with values', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        identifierNamesCache: {
+                            globalIdentifiers: {
+                                foo: '_0x123456'
+                            },
+                            propertyIdentifiers: {}
+                        }
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        identifierNamesCache: {
+                            globalIdentifiers: {
+                                foo: '_0x123456'
+                            },
+                            propertyIdentifiers: {}
+                        }
+                    };
+                });
+
+                it('should not normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+
+            describe('Variant #3: all fields are exist with empty objects', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        identifierNamesCache: {
+                            globalIdentifiers: {},
+                            propertyIdentifiers: {}
+                        }
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        identifierNamesCache: {
+                            globalIdentifiers: {},
+                            propertyIdentifiers: {}
+                        }
+                    };
+                });
+
+                it('should not normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+
+            describe('Variant #4: some fields are missing', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        identifierNamesCache: {
+                            globalIdentifiers: {
+                                foo: '_0x123456'
+                            }
+                        }
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        identifierNamesCache: {
+                            globalIdentifiers: {
+                                foo: '_0x123456'
+                            },
+                            propertyIdentifiers: {}
+                        }
+                    };
+                });
+
+                it('should normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+
+            describe('Variant #5: all fields are missing', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        identifierNamesCache: {}
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        identifierNamesCache: {
+                            globalIdentifiers: {},
+                            propertyIdentifiers: {}
+                        }
+                    };
+                });
+
+                it('should normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+        });
+
+        describe('seedRule', () => {
+            describe('Variant #1: seed value is string', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        seed: 'abc'
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        seed: 'abc'
+                    };
+                });
+
+                it('should not normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+
+            describe('Variant #2: seed value is number', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        seed: 123
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        seed: 123
+                    };
+                });
+
+                it('should normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+
+            describe('Variant #3: seed value is `0``', () => {
+                let seedValue: number;
+
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        seed: 0
+                    });
+
+                    seedValue = Number(optionsPreset.seed);
+                });
+
+                it('should normalize seed value', () => {
+                    assert.isAtLeast(seedValue, 0);
+                    assert.isBelow(seedValue, 999_999_999);
+                });
+            });
+        });
+
         describe('selfDefendingRule', () => {
             before(() => {
                 optionsPreset = getNormalizedOptions({
-                    ...DEFAULT_PRESET,
+                    ...getDefaultOptions(),
                     selfDefending: true,
                     compact: false
                 });
 
                 expectedOptionsPreset = {
-                    ...DEFAULT_PRESET,
+                    ...getDefaultOptions(),
                     selfDefending: true,
                     compact: true
                 };
@@ -274,12 +535,12 @@ describe('OptionsNormalizer', () => {
             describe('Variant #1: only source map base url', () => {
                 before(() => {
                     optionsPreset = getNormalizedOptions({
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         sourceMapBaseUrl: 'http://localhost:9000',
                     });
 
                     expectedOptionsPreset = {
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         sourceMapBaseUrl: ''
                     };
                 });
@@ -292,13 +553,13 @@ describe('OptionsNormalizer', () => {
             describe('Variant #2: source map base url with source map file name', () => {
                 before(() => {
                     optionsPreset = getNormalizedOptions({
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         sourceMapBaseUrl: 'http://localhost:9000',
                         sourceMapFileName: '/outputSourceMapName.map'
                     });
 
                     expectedOptionsPreset = {
-                        ...DEFAULT_PRESET,
+                        ...getDefaultOptions(),
                         sourceMapBaseUrl: 'http://localhost:9000/',
                         sourceMapFileName: 'outputSourceMapName.js.map'
                     };
@@ -311,17 +572,197 @@ describe('OptionsNormalizer', () => {
         });
 
         describe('sourceMapFileNameRule', () => {
+            describe('Base filename without extension', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        sourceMapBaseUrl: 'http://localhost:9000',
+                        sourceMapFileName: 'outputSourceMapName'
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        sourceMapBaseUrl: 'http://localhost:9000/',
+                        sourceMapFileName: 'outputSourceMapName.js.map'
+                    };
+                });
+
+                it('should normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+
+            describe('Slashes in file name', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        sourceMapBaseUrl: 'http://localhost:9000',
+                        sourceMapFileName: '//outputSourceMapName'
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        sourceMapBaseUrl: 'http://localhost:9000/',
+                        sourceMapFileName: 'outputSourceMapName.js.map'
+                    };
+                });
+
+                it('should normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+
+            describe('`js` file extension in file name', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        sourceMapBaseUrl: 'http://localhost:9000',
+                        sourceMapFileName: 'outputSourceMapName.js'
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        sourceMapBaseUrl: 'http://localhost:9000/',
+                        sourceMapFileName: 'outputSourceMapName.js.map'
+                    };
+                });
+
+                it('should normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+
+            describe('Non `js` file extension in file name', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        sourceMapBaseUrl: 'http://localhost:9000',
+                        sourceMapFileName: 'outputSourceMapName.exe'
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        sourceMapBaseUrl: 'http://localhost:9000/',
+                        sourceMapFileName: 'outputSourceMapName.js.map'
+                    };
+                });
+
+                it('should normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+
+            describe('File hash in file name', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        sourceMapBaseUrl: 'http://localhost:9000',
+                        sourceMapFileName: 'outputSourceMapName.7e2c49a622975ebd9b7e'
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        sourceMapBaseUrl: 'http://localhost:9000/',
+                        sourceMapFileName: 'outputSourceMapName.7e2c49a622975ebd9b7e.js.map'
+                    };
+                });
+
+                it('should normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+
+            describe('File hash and `js` file extension in file name #1', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        sourceMapBaseUrl: 'http://localhost:9000',
+                        sourceMapFileName: 'outputSourceMapName.7e2c49a622975ebd9b7e.js'
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        sourceMapBaseUrl: 'http://localhost:9000/',
+                        sourceMapFileName: 'outputSourceMapName.7e2c49a622975ebd9b7e.js.map'
+                    };
+                });
+
+                it('should normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+
+            describe('File hash and non `js` file extension in file name', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        sourceMapBaseUrl: 'http://localhost:9000',
+                        sourceMapFileName: 'outputSourceMapName.7e2c49a622975ebd9b7e.exe'
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        sourceMapBaseUrl: 'http://localhost:9000/',
+                        sourceMapFileName: 'outputSourceMapName.7e2c49a622975ebd9b7e.js.map'
+                    };
+                });
+
+                it('should normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+        });
+
+        describe('splitStringsChunkLengthRule', () => {
+            describe('`splitStringsChunkLengthRule` value is float number', () => {
+                before(() => {
+                    optionsPreset = getNormalizedOptions({
+                        ...getDefaultOptions(),
+                        splitStrings: true,
+                        splitStringsChunkLength: 5.6
+                    });
+
+                    expectedOptionsPreset = {
+                        ...getDefaultOptions(),
+                        splitStrings: true,
+                        splitStringsChunkLength: 5
+                    };
+                });
+
+                it('should normalize options preset', () => {
+                    assert.deepEqual(optionsPreset, expectedOptionsPreset);
+                });
+            });
+        });
+
+        describe('stringArrayRule', () => {
             before(() => {
                 optionsPreset = getNormalizedOptions({
-                    ...DEFAULT_PRESET,
-                    sourceMapBaseUrl: 'http://localhost:9000',
-                    sourceMapFileName: '//outputSourceMapName'
+                    ...getDefaultOptions(),
+                    stringArray: false,
+                    stringArrayCallsTransform: true,
+                    stringArrayCallsTransformThreshold: 1,
+                    stringArrayEncoding: [StringArrayEncoding.Rc4],
+                    stringArrayIndexShift: true,
+                    stringArrayRotate: true,
+                    stringArrayShuffle: true,
+                    stringArrayWrappersChainedCalls: true,
+                    stringArrayWrappersCount: 5,
+                    stringArrayThreshold: 0.5
                 });
 
                 expectedOptionsPreset = {
-                    ...DEFAULT_PRESET,
-                    sourceMapBaseUrl: 'http://localhost:9000/',
-                    sourceMapFileName: 'outputSourceMapName.js.map'
+                    ...getDefaultOptions(),
+                    stringArray: false,
+                    stringArrayCallsTransform: false,
+                    stringArrayCallsTransformThreshold: 0,
+                    stringArrayEncoding: [StringArrayEncoding.None],
+                    stringArrayIndexShift: false,
+                    stringArrayRotate: false,
+                    stringArrayShuffle: false,
+                    stringArrayWrappersChainedCalls: false,
+                    stringArrayWrappersCount: 0,
+                    stringArrayThreshold: 0
                 };
             });
 
@@ -330,22 +771,18 @@ describe('OptionsNormalizer', () => {
             });
         });
 
-        describe('stringArrayRule', () => {
+        describe('stringArrayCallsTransformThresholdRule', () => {
             before(() => {
                 optionsPreset = getNormalizedOptions({
-                    ...DEFAULT_PRESET,
-                    stringArray: false,
-                    stringArrayEncoding: StringArrayEncoding.Rc4,
-                    stringArrayThreshold: 0.5,
-                    rotateStringArray: true
+                    ...getDefaultOptions(),
+                    stringArrayCallsTransform: true,
+                    stringArrayCallsTransformThreshold: 0
                 });
 
                 expectedOptionsPreset = {
-                    ...DEFAULT_PRESET,
-                    stringArray: false,
-                    stringArrayEncoding: false,
-                    stringArrayThreshold: 0,
-                    rotateStringArray: false
+                    ...getDefaultOptions(),
+                    stringArrayCallsTransform: false,
+                    stringArrayCallsTransformThreshold: 0
                 };
             });
 
@@ -357,13 +794,15 @@ describe('OptionsNormalizer', () => {
         describe('stringArrayEncodingRule', () => {
             before(() => {
                 optionsPreset = getNormalizedOptions({
-                    ...DEFAULT_PRESET,
-                    stringArrayEncoding: true
+                    ...getDefaultOptions(),
+                    stringArrayEncoding: []
                 });
 
                 expectedOptionsPreset = {
-                    ...DEFAULT_PRESET,
-                    stringArrayEncoding: StringArrayEncoding.Base64
+                    ...getDefaultOptions(),
+                    stringArrayEncoding: [
+                        StringArrayEncoding.None
+                    ]
                 };
             });
 
@@ -372,20 +811,18 @@ describe('OptionsNormalizer', () => {
             });
         });
 
-        describe('stringArrayThresholdRule', () => {
+        describe('stringArrayWrappersChainedCallsRule', () => {
             before(() => {
                 optionsPreset = getNormalizedOptions({
-                    ...DEFAULT_PRESET,
-                    rotateStringArray: true,
-                    stringArray: true,
-                    stringArrayThreshold: 0
+                    ...getDefaultOptions(),
+                    stringArrayWrappersChainedCalls: true,
+                    stringArrayWrappersCount: 0
                 });
 
                 expectedOptionsPreset = {
-                    ...DEFAULT_PRESET,
-                    rotateStringArray: false,
-                    stringArray: false,
-                    stringArrayThreshold: 0
+                    ...getDefaultOptions(),
+                    stringArrayWrappersChainedCalls: false,
+                    stringArrayWrappersCount: 0
                 };
             });
 

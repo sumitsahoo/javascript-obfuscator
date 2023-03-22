@@ -1,6 +1,6 @@
 import { ValidationError } from 'class-validator';
 
-import { TObject } from '../types/TObject';
+import { TDictionary } from '../types/TDictionary';
 
 export class ValidationErrorsFormatter {
     /**
@@ -10,10 +10,10 @@ export class ValidationErrorsFormatter {
     public static format (errors: ValidationError[]): string {
         return errors
             .reduce(
-                (errorMessages: string[], error: ValidationError) => ([
+                (errorMessages: string[], error: ValidationError) => [
                     ...errorMessages,
                     ValidationErrorsFormatter.formatWithNestedConstraints(error)
-                ]),
+                ],
                 []
             )
             .join('\n');
@@ -24,7 +24,11 @@ export class ValidationErrorsFormatter {
      * @returns {string}
      */
     private static formatWithNestedConstraints (error: ValidationError): string {
-        const constraints: TObject<string> = error.constraints;
+        const constraints: TDictionary<string> | undefined = error.constraints;
+
+        if (!constraints) {
+            return `\`${error.property}\` error\n`;
+        }
 
         const rootError: string = `\`${error.property}\` errors:\n`;
         const nestedErrors: string = Object
