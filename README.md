@@ -4,6 +4,12 @@
   Author: Timofey Kachalov
   -->
 
+#### You can support this project by donating:
+* (Github) https://github.com/sponsors/sanex3339
+* (OpenCollective) https://opencollective.com/javascript-obfuscator
+
+Huge thanks to all supporters!
+
 # JavaScript obfuscator
 
 ![logo](https://raw.githubusercontent.com/javascript-obfuscator/javascript-obfuscator/master/images/logo.png)
@@ -32,6 +38,7 @@ The example of obfuscated code: [github.com](https://github.com/javascript-obfus
 * Weex: [weex-devtool](https://www.npmjs.com/package/weex-devtool)
 * Malta: [malta-js-obfuscator](https://github.com/fedeghe/malta-js-obfuscator)
 * Netlify plugin: [netlify-plugin-js-obfuscator](https://www.npmjs.com/package/netlify-plugin-js-obfuscator)
+* Snowpack plugin: [snowpack-javascript-obfuscator](https://www.npmjs.com/package/snowpack-javascript-obfuscator)
 
 [![npm version](https://badge.fury.io/js/javascript-obfuscator.svg)](https://badge.fury.io/js/javascript-obfuscator)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fjavascript-obfuscator%2Fjavascript-obfuscator.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fjavascript-obfuscator%2Fjavascript-obfuscator?ref=badge_shield)
@@ -40,12 +47,6 @@ The example of obfuscated code: [github.com](https://github.com/javascript-obfus
 [![Backers on Open Collective](https://opencollective.com/javascript-obfuscator/backers/badge.svg)](#backers) 
 [![Sponsors on Open Collective](https://opencollective.com/javascript-obfuscator/sponsors/badge.svg)](#sponsors)
 [![xscode](https://img.shields.io/badge/Available%20on-xs%3Acode-blue?style=?style=plastic&logo=appveyor&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAAZQTFRF////////VXz1bAAAAAJ0Uk5T/wDltzBKAAAAlUlEQVR42uzXSwqAMAwE0Mn9L+3Ggtgkk35QwcnSJo9S+yGwM9DCooCbgn4YrJ4CIPUcQF7/XSBbx2TEz4sAZ2q1RAECBAiYBlCtvwN+KiYAlG7UDGj59MViT9hOwEqAhYCtAsUZvL6I6W8c2wcbd+LIWSCHSTeSAAECngN4xxIDSK9f4B9t377Wd7H5Nt7/Xz8eAgwAvesLRjYYPuUAAAAASUVORK5CYII=)](https://xscode.com/sanex3339/javascript-obfuscator)
-
-#### You can support this project by donating:
-* (OpenCollective) https://opencollective.com/javascript-obfuscator
-* (Bitcoin) 1MNXkE3mzoicYPQv29cxvXnsz1vxxsuBRy
-
-Huge thanks to all supporters!
 
 #### *NOTE! the README on the master branch might not match that of the latest stable release!*
 
